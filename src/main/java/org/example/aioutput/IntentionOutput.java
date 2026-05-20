@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class IntentionOutput {
 
-    @Description("意图分析 1：签到打卡 2：请假报备 3：查询签到/请假状态 4：规则问答 5：其他")
+    @Description("意图分析 1：请假报备 2：状态查询 3：规则问答 4：其他/非相关 5：个人信息查询")
     private Integer intention;
 
     @Description("大模型对用户的输出")

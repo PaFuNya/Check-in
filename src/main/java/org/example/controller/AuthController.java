@@ -39,4 +39,33 @@ public class AuthController {
     public Map<String, Object> check(HttpSession session) {
         return authService.check(session);
     }
+
+    @GetMapping("/profile")
+    public Map<String, Object> getProfile(HttpSession session) {
+        String studentId = (String) session.getAttribute("studentId");
+        if (studentId == null) {
+            return Map.of("success", false, "message", "未登录");
+        }
+        Map<String, Object> profile = authService.getProfile(studentId);
+        return profile;
+    }
+
+    @PostMapping("/profile")
+    public Map<String, Object> updateProfile(@RequestBody Map<String, Object> body,
+                                              HttpSession session) {
+        String studentId = (String) session.getAttribute("studentId");
+        if (studentId == null) {
+            return Map.of("success", false, "message", "未登录");
+        }
+        String className = (String) body.getOrDefault("className", "");
+        String phoneNumber = (String) body.getOrDefault("phoneNumber", "");
+        String avatarUrl = (String) body.getOrDefault("avatarUrl", "");
+        Map<String, Object> result = authService.updateProfile(studentId, className, phoneNumber, avatarUrl);
+        if (Boolean.TRUE.equals(result.get("success"))) {
+            session.setAttribute("className", className);
+            session.setAttribute("phoneNumber", phoneNumber);
+            session.setAttribute("avatarUrl", avatarUrl);
+        }
+        return result;
+    }
 }

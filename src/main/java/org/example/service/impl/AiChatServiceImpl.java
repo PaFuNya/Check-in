@@ -81,11 +81,13 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     @ChatFlow
-    public String chatStream(String userId, String message) {
-        log.info("🎯 调用意图识别 - userId: {}, message: {}", userId, message);
+    public String chatStream(String userId, String studentName, String className, String message) {
+        log.info("intention - userId: {}, studentName: {}, message: {}", userId, studentName, message);
 
-        IntentionOutput intention = assistant.intention(userId, message);
-        log.info("🎯 意图识别结果: {}", intention);
+        IntentionOutput intention = assistant.intention(userId, message, userId,
+                studentName != null ? studentName : "",
+                className != null ? className : "");
+        log.info("intention result: {}", intention);
 
         String output = intention.getOutput();
         switch (intention.getIntention()) {
@@ -99,8 +101,8 @@ public class AiChatServiceImpl implements AiChatService {
                 output = doRagQuery(userId, message);
                 break;
             case 4:
+            case 5:
             default:
-                // 非寝室相关或闲聊，直接返回AI的拒绝/引导回复
                 return output;
         }
         return output;

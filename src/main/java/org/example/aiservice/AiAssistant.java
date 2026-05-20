@@ -13,5 +13,7 @@ public interface AiAssistant {
 
     @SystemMessage(fromResource = "getIntention.txt")
     @UserMessage("当前sessionId:{{sessionId}}；用户当前消息：{{message}}")
-    IntentionOutput intention(@V("sessionId") String sessionId, @V("message") String message);
+    IntentionOutput intention(@V("sessionId") String sessionId, @V("message") String message,
+                              @V("studentId") String studentId, @V("studentName") String studentName,
+                              @V("className") String className);
 }

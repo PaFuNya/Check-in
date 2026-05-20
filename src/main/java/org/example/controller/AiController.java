@@ -1,5 +1,6 @@
 package org.example.controller;
 
+import jakarta.servlet.http.HttpSession;
 import org.example.entity.CheckInRecordEntity;
 import org.example.entity.LeaveRequestEntity;
 import org.example.repository.CheckInRecordRepository;
@@ -32,8 +33,14 @@ public class AiController {
 
     @GetMapping(value = "/chat-stream", produces = MediaType.TEXT_PLAIN_VALUE + ";charset=utf-8")
     public Flux<String> chatStream(@RequestParam(value = "message", defaultValue = "Hello") String message,
-                                   @RequestParam(value = "userId", defaultValue = "111") String userId) {
-        return Flux.just(aiChatService.chatStream(userId, message));
+                                   @RequestParam(value = "userId", defaultValue = "111") String userId,
+                                   HttpSession session) {
+        String studentName = (String) session.getAttribute("studentName");
+        String className = (String) session.getAttribute("className");
+        return Flux.just(aiChatService.chatStream(userId,
+                studentName != null ? studentName : "",
+                className != null ? className : "",
+                message));
     }
 
     @GetMapping(value = "/chat-history")
