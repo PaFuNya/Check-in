@@ -1,0 +1,29 @@
+package org.example.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.Comment;
+
+@EqualsAndHashCode(callSuper = true)
+@Table(name = "chat_history")
+@Entity
+@Data
+@Comment("聊天历史")
+public class ChatHistoryEntity extends BaseEntity {
+
+    @Comment("会话id")
+    private String sessionId;
+
+    @Comment("学生id")
+    private String studentId;
+
+    @Comment("角色")
+    private String role;
+
+    @Comment("内容")
+    @Lob
+    private String content;
+}

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寝室签到助手</title>
+    <style>
+        :root, [data-theme="light"] {
+            --bg: #F7F6F3; --bg-card: #FFFFFF; --bg-hover: #F9F9F8;
+            --text: #1a1a1a; --text2: #6b7280; --text3: #9ca3af;
+            --border: #E5E5E3; --accent: #2563EB; --accent-hover: #1d4ed8;
+            --success: #059669; --success-bg: #ECFDF5;
+            --error: #DC2626; --shadow: 0 2px 8px rgba(0,0,0,0.06); --radius: 12px;
+            --shadow-lg: 0 4px 24px rgba(0,0,0,0.06);
+            --glass-bg: rgba(255,255,255,0.72);
+            --glass-border: 1px solid rgba(255,255,255,0.5);
+        }
+        [data-theme="dark"] {
+            --bg: #0f0f0f; --bg-card: #1a1a1a; --bg-hover: #242424;
+            --text: #f0f0f0; --text2: #9ca3af; --text3: #6b7280;
+            --border: #2a2a2a; --accent: #3b82f6; --accent-hover: #60a5fa;
+            --success: #10b981; --success-bg: #064e3b;
+            --error: #ef4444; --shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-lg: 0 4px 24px rgba(0,0,0,0.3);
+            --glass-bg: rgba(30,30,30,0.72);
+            --glass-border: 1px solid rgba(255,255,255,0.08);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #0f0f0f; --bg-card: #1a1a1a; --bg-hover: #242424;
+                --text: #f0f0f0; --text2: #9ca3af; --text3: #6b7280;
+                --border: #2a2a2a; --accent: #3b82f6; --accent-hover: #60a5fa;
+                --success: #10b981; --success-bg: #064e3b; --error: #ef4444;
+                --shadow: 0 2px 8px rgba(0,0,0,0.3);
+                --shadow-lg: 0 4px 24px rgba(0,0,0,0.3);
+                --glass-bg: rgba(30,30,30,0.72);
+                --glass-border: 1px solid rgba(255,255,255,0.08);
+            }
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'SF Pro Display','PingFang SC',-apple-system,sans-serif; background:var(--bg); color:var(--text); height:100vh; overflow:hidden; display:flex; flex-direction:column; position:relative; }
+
+        /* Background gradient orbs */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%; left: -10%;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(37,99,235,0.15), transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+            animation: orbFloat 8s ease-in-out infinite;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -20%; right: -10%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(16,185,129,0.1), transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+            animation: orbFloat 10s ease-in-out infinite reverse;
+        }
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -20px) scale(1.05); }
+        }
+
+        /* Keyframes */
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes breathe {
+            0%, 100% { box-shadow: 0 8px 32px rgba(37,99,235,0.3), 0 0 0 0 rgba(37,99,235,0.4); }
+            50% { box-shadow: 0 8px 32px rgba(37,99,235,0.3), 0 0 0 20px rgba(37,99,235,0); }
+        }
+        @keyframes scaleIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes typing { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+        /* Nav — glassmorphism */
+        .nav { display:flex; align-items:center; justify-content:space-between; padding:12px 24px; background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-bottom:var(--glass-border); flex-shrink:0; box-shadow:0 1px 0 rgba(37,99,235,0.06); }
+        .nav .title { font-size:18px; font-weight:700; }
+        .nav-right { display:flex; align-items:center; gap:12px; }
+        .nav .time { font-size:13px; color:var(--text3); font-variant-numeric:tabular-nums; }
+        .nav .user { font-size:13px; color:var(--text2); }
+
+        /* Theme toggle in nav */
+        .theme-toggle {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 16px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .theme-toggle:hover { transform:translateY(-1px); box-shadow:var(--shadow-lg); border-color:var(--accent); }
+        .theme-toggle:active { transform:scale(0.95); }
+        .theme-toggle .icon-sun, .theme-toggle .icon-moon, .theme-toggle .icon-system { display:none; }
+        .theme-toggle[data-mode="light"] .icon-sun { display:inline; }
+        .theme-toggle[data-mode="dark"] .icon-moon { display:inline; }
+        .theme-toggle[data-mode="system"] .icon-system { display:inline; }
+
+        .logout-btn { padding:6px 14px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); color:var(--error); font-size:13px; cursor:pointer; font-family:inherit; transition:all 0.2s ease; }
+        .logout-btn:hover { transform:translateY(-1px); box-shadow:var(--shadow); }
+        .logout-btn:active { transform:scale(0.97); }
+
+        /* Main area */
+        .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+        /* Hero - checkin button area */
+        .hero { flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:36px 24px 28px; }
+        .hero .greeting { font-size:22px; font-weight:700; margin-bottom:4px; animation:fadeInUp 0.5s ease-out; }
+        .hero .sub { font-size:14px; color:var(--text2); margin-bottom:24px; animation:fadeInUp 0.5s ease-out 0.05s both; }
+
+        /* Circular checkin button — breathing glow */
+        .checkin-circle { width:130px; height:130px; border-radius:50%; background:linear-gradient(135deg, var(--accent), #1d4ed8); color:#fff; border:none; cursor:pointer; font-family:inherit; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; transition:all 0.3s ease; animation:breathe 2.5s ease-in-out infinite, fadeInUp 0.5s ease-out 0.1s both; }
+        .checkin-circle:hover { transform:scale(1.05); animation:fadeInUp 0.5s ease-out 0.1s both; }
+        .checkin-circle:active { transform:scale(0.95); }
+        .checkin-circle .icon { font-size:32px; }
+        .checkin-circle .label { font-size:15px; font-weight:600; }
+        .checkin-circle .sub-label { font-size:11px; opacity:0.8; }
+
+        /* Quick actions */
+        .quick-actions { display:flex; gap:12px; margin-top:18px; }
+        .quick-btn { padding:8px 20px; border-radius:999px; border:1px solid var(--border); background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); color:var(--text); font-size:13px; cursor:pointer; font-family:inherit; transition:all 0.2s ease; }
+        .quick-btn:hover { background:var(--bg-hover); border-color:var(--accent); color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow); }
+        .quick-btn:active { transform:scale(0.97); }
+
+        /* Chat area — glassmorphism */
+        .chat-section { flex:1; display:flex; flex-direction:column; border-top:var(--glass-border); background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); min-height:0; }
+        .chat-header { padding:12px 20px; font-size:14px; font-weight:600; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; gap:8px; }
+        .chat-header .dot { width:8px; height:8px; border-radius:50%; background:var(--success); animation:pulse 2s infinite; }
+
+        .chat-messages { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
+
+        /* Message bubble with name */
+        .msg-wrap { display:flex; flex-direction:column; max-width:80%; animation:fadeInUp 0.3s ease-out; }
+        .msg-wrap.user { align-self:flex-end; align-items:flex-end; }
+        .msg-wrap.bot { align-self:flex-start; align-items:flex-start; }
+
+        .msg-name { font-size:11px; color:var(--text3); margin-bottom:4px; padding:0 4px; }
+        .msg-wrap.user .msg-name { color:var(--accent); }
+
+        .msg { padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.7; word-break:break-word; }
+        .msg-wrap.user .msg { background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+        .msg-wrap.bot .msg { background:var(--bg); color:var(--text); border-bottom-left-radius:4px; border:1px solid var(--border); }
+
+        .msg-time { font-size:10px; color:var(--text3); margin-top:4px; padding:0 4px; }
+
+        /* Typing indicator */
+        .typing { display:flex; gap:4px; padding:12px 16px; }
+        .typing span { width:6px; height:6px; border-radius:50%; background:var(--text3); animation:typing 1.4s infinite; }
+        .typing span:nth-child(2) { animation-delay:0.2s; }
+        .typing span:nth-child(3) { animation-delay:0.4s; }
+
+        .chat-input-area { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; }
+        .chat-input { flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; font-family:inherit; outline:none; transition:all 0.2s ease; }
+        .chat-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,0.15), 0 0 20px rgba(37,99,235,0.08); transform:scale(1.01); }
+        .chat-send { padding:10px 20px; border-radius:10px; border:none; background:var(--accent); color:#fff; font-size:14px; font-weight:500; cursor:pointer; font-family:inherit; transition:all 0.2s ease; }
+        .chat-send:hover { background:var(--accent-hover); transform:translateY(-1px); box-shadow:0 4px 12px rgba(37,99,235,0.3); }
+        .chat-send:active { transform:scale(0.97); }
+
+        /* Toast — slide in from top */
+        .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-20px); padding:10px 24px; border-radius:10px; font-size:14px; z-index:999; opacity:0; transition:opacity 0.3s, transform 0.3s; pointer-events:none; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+        .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+        .toast.success { background:var(--success-bg); color:var(--success); border:1px solid var(--success); }
+        .toast.error { background:#FEF2F2; color:var(--error); border:1px solid var(--error); }
+        .toast.info { background:#EFF6FF; color:var(--accent); border:1px solid var(--accent); }
+    </style>
+</head>
+<body>
+    <!-- Nav -->
+    <div class="nav">
+        <div class="title">🏠 寝室签到助手</div>
+        <div class="nav-right">
+            <span class="time" id="clock"></span>
+            <span class="user" id="userName"></span>
+            <button class="theme-toggle" id="themeToggle" data-mode="light" aria-label="切换主题" title="切换主题模式">
+                <span class="icon-sun">☀️</span>
+                <span class="icon-moon">🌙</span>
+                <span class="icon-system">💻</span>
+            </button>
+            <button class="logout-btn" onclick="logout()">退出</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Hero with circular checkin button -->
+        <div class="hero">
+            <div class="greeting" id="greeting">你好</div>
+            <div class="sub">欢迎使用寝室自助签到系统</div>
+            <button class="checkin-circle" onclick="goCheckin()">
+                <span class="icon">📍</span>
+                <span class="label">查寝签到</span>
+                <span class="sub-label">点击开始签到</span>
+            </button>
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="showRecords()">📋 签到记录</button>
+                <button class="quick-btn" onclick="document.getElementById('chatInput').focus()">💬 咨询问题</button>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <div class="chat-header">
+                <span class="dot"></span>
+                寝室守则咨询 — AI 助手
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="msg-wrap bot">
+                    <span class="msg-name">🤖 AI助手</span>
+                    <div class="msg">你好！我是寝室守则 AI 助手 🏠<br>你可以问我关于寝室管理、作息时间、卫生检查、报修流程等问题。<br>也可以直接查询签到记录哦～</div>
+                    <span class="msg-time">刚刚</span>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input class="chat-input" id="chatInput" placeholder="输入寝室相关问题..." onkeydown="if(event.key==='Enter')sendChat()">
+                <button class="chat-send" onclick="sendChat()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+/* ===== Theme Management ===== */
+(function() {
+    const MODES = ['light', 'dark', 'system'];
+    const toggle = document.getElementById('themeToggle');
+
+    function applyTheme(mode) {
+        if (mode === 'system') {
+            document.documentElement.removeAttribute('data-theme');
+        } else {
+            document.documentElement.setAttribute('data-theme', mode);
+        }
+        localStorage.setItem('theme', mode);
+        toggle.setAttribute('data-mode', mode);
+    }
+
+    function initTheme() {
+        var saved = localStorage.getItem('theme') || 'light';
+        applyTheme(saved);
+    }
+
+    toggle.addEventListener('click', function() {
+        var current = toggle.getAttribute('data-mode');
+        var idx = MODES.indexOf(current);
+        var next = MODES[(idx + 1) % MODES.length];
+        applyTheme(next);
+    });
+
+    initTheme();
+})();
+
+let studentId = null, studentName = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    updateClock(); setInterval(updateClock, 1000);
+    try {
+        const r = await fetch('/auth/check');
+        if (!r.ok) { location.href='/login'; return; }
+        const d = await r.json();
+        if (!d.loggedIn) { location.href='/login'; return; }
+        studentId = d.studentId; studentName = d.studentName;
+        document.getElementById('userName').textContent = studentName || studentId;
+        const h = new Date().getHours();
+        const greet = h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
+        document.getElementById('greeting').textContent = greet + '，' + (studentName || '') + '！';
+    } catch(e) { location.href='/login'; }
+});
+
+function updateClock() {
+    document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-CN',{hour12:false});
+}
+
+function goCheckin() { location.href = '/checkin'; }
+
+async function showRecords() {
+    if (!studentId) { toast('请先登录','error'); return; }
+    const wrap = addMsg('查询我的签到记录', 'user', studentName || '我');
+    const botWrap = addMsg('', 'bot', '🤖 AI助手', true);
+    try {
+        const resp = await fetch('/ai/check-in-records?studentId=' + encodeURIComponent(studentId));
+        const records = await resp.json();
+        let html = '';
+        if (!records || records.length === 0) {
+            html = '📭 暂无签到记录';
+        } else {
+            html = '📋 <b>你的签到记录：</b><br><br>';
+            records.forEach((r, i) => {
+                const time = r.checkTime ? new Date(r.checkTime).toLocaleString('zh-CN') : '未知';
+                html += `${i+1}. ${r.status} | ${time}<br>`;
+                if (r.locationInfo) html += `&nbsp;&nbsp;📍 ${r.locationInfo}<br>`;
+            });
+        }
+        botWrap.querySelector('.msg').innerHTML = html;
+    } catch(err) {
+        botWrap.querySelector('.msg').innerHTML = '❌ 查询失败，请重试';
+    }
+    scrollChat();
+}
+
+// ========== Chat ==========
+let chatBusy = false;
+
+async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if (!msg || chatBusy) return;
+    input.value = '';
+    addMsg(msg, 'user', studentName || '我');
+
+    // Show typing indicator
+    const botWrap = document.createElement('div');
+    botWrap.className = 'msg-wrap bot';
+    botWrap.innerHTML = `
+        <span class="msg-name">🤖 AI助手</span>
+        <div class="msg"><div class="typing"><span></span><span></span><span></span></div></div>
+    `;
+    document.getElementById('chatMessages').appendChild(botWrap);
+    scrollChat();
+    chatBusy = true;
+
+    try {
+        const url = '/ai/chat-stream?message=' + encodeURIComponent(msg) + '&userId=' + encodeURIComponent(studentId || '111');
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+        // Read as plain text (backend returns plain text, not SSE)
+        const text = await resp.text();
+        const msgEl = botWrap.querySelector('.msg');
+        if (text && text.trim()) {
+            msgEl.innerHTML = text.replace(/\n/g, '<br>');
+        } else {
+            msgEl.innerHTML = '暂无回复，请换个方式提问～';
+            msgEl.style.color = 'var(--text3)';
+        }
+    } catch(err) {
+        const msgEl = botWrap.querySelector('.msg');
+        msgEl.innerHTML = '❌ 网络异常，请重试';
+        msgEl.style.color = 'var(--error)';
+    }
+    chatBusy = false;
+    scrollChat();
+}
+
+function addMsg(text, cls, name, noTime) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrap ' + cls;
+    let html = '';
+    if (name) html += '<span class="msg-name">' + (cls === 'user' ? '👤 ' : '🤖 ') + name + '</span>';
+    html += '<div class="msg">' + text + '</div>';
+    if (!noTime) html += '<span class="msg-time">' + new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}) + '</span>';
+    wrap.innerHTML = html;
+    document.getElementById('chatMessages').appendChild(wrap);
+    scrollChat();
+    return wrap;
+}
+
+function scrollChat() {
+    const el = document.getElementById('chatMessages');
+    el.scrollTop = el.scrollHeight;
+}
+
+function toast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast ' + (type||'info') + ' show';
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function logout() {
+    await fetch('/auth/logout', {method:'POST'});
+    location.href = '/login';
+}
+</script>
+</body>
+</html>

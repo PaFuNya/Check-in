@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寝室签到助手 — 登录</title>
+    <style>
+        /* ===== CSS Variables ===== */
+        :root, [data-theme="light"] {
+            --bg-canvas: #F7F6F3;
+            --bg-surface: #FFFFFF;
+            --bg-elevated: #F9F9F8;
+            --text-primary: #1a1a1a;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --border: #E5E5E3;
+            --border-subtle: #F0F0EE;
+            --accent: #2563EB;
+            --accent-hover: #1d4ed8;
+            --accent-light: #EFF6FF;
+            --success: #059669;
+            --success-light: #ECFDF5;
+            --error: #DC2626;
+            --error-light: #FEF2F2;
+            --warning: #D97706;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-lg: 0 4px 24px rgba(0,0,0,0.06);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-btn: 12px;
+            --radius-input: 10px;
+            --glass-bg: rgba(255,255,255,0.72);
+            --glass-border: 1px solid rgba(255,255,255,0.5);
+            --glass-shadow: 0 8px 32px rgba(0,0,0,0.08);
+        }
+
+        [data-theme="dark"] {
+            --bg-canvas: #0f0f0f;
+            --bg-surface: #1a1a1a;
+            --bg-elevated: #242424;
+            --text-primary: #f0f0f0;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --border: #2a2a2a;
+            --border-subtle: #1f1f1f;
+            --accent: #3b82f6;
+            --accent-hover: #60a5fa;
+            --accent-light: #1e293b;
+            --success: #10b981;
+            --success-light: #064e3b;
+            --error: #ef4444;
+            --error-light: #450a0a;
+            --warning: #f59e0b;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+            --shadow-lg: 0 4px 24px rgba(0,0,0,0.3);
+            --glass-bg: rgba(30,30,30,0.72);
+            --glass-border: 1px solid rgba(255,255,255,0.08);
+            --glass-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-canvas: #0f0f0f;
+                --bg-surface: #1a1a1a;
+                --bg-elevated: #242424;
+                --text-primary: #f0f0f0;
+                --text-secondary: #9ca3af;
+                --text-tertiary: #6b7280;
+                --border: #2a2a2a;
+                --border-subtle: #1f1f1f;
+                --accent: #3b82f6;
+                --accent-hover: #60a5fa;
+                --accent-light: #1e293b;
+                --success: #10b981;
+                --success-light: #064e3b;
+                --error: #ef4444;
+                --error-light: #450a0a;
+                --warning: #f59e0b;
+                --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+                --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+                --shadow-lg: 0 4px 24px rgba(0,0,0,0.3);
+                --glass-bg: rgba(30,30,30,0.72);
+                --glass-border: 1px solid rgba(255,255,255,0.08);
+                --glass-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            }
+        }
+
+        /* ===== Keyframes ===== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes breathe {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0.4); }
+            50% { box-shadow: 0 0 0 15px rgba(37,99,235,0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== Reset & Base ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'SF Pro Display', 'PingFang SC', -apple-system, 'Segoe UI', sans-serif;
+            background: var(--bg-canvas);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background gradient orbs */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%; left: -10%;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(37,99,235,0.15), transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+            animation: orbFloat 8s ease-in-out infinite;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -20%; right: -10%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(16,185,129,0.1), transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            pointer-events: none;
+            animation: orbFloat 10s ease-in-out infinite reverse;
+        }
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -20px) scale(1.05); }
+        }
+
+        /* ===== Theme Toggle ===== */
+        .theme-toggle {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-btn);
+            border: var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            z-index: 10;
+            box-shadow: var(--shadow-md);
+        }
+        .theme-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent);
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon,
+        .theme-toggle .icon-system { display: none; }
+        .theme-toggle[data-mode="light"] .icon-sun { display: block; }
+        .theme-toggle[data-mode="dark"] .icon-moon { display: block; }
+        .theme-toggle[data-mode="system"] .icon-system { display: block; }
+
+        /* ===== Login Card ===== */
+        .login-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            width: 420px;
+            max-width: 90%;
+            box-shadow: var(--glass-shadow);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        /* ===== Logo ===== */
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-light);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+        .logo-icon:hover {
+            transform: scale(1.1);
+        }
+        .logo-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--accent);
+        }
+        .logo-text {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .subtitle {
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* ===== Form ===== */
+        .form-group {
+            margin-bottom: 16px;
+            animation: fadeInUp 0.5s ease-out both;
+        }
+        .form-group:nth-child(1) { animation-delay: 0.1s; }
+        .form-group:nth-child(2) { animation-delay: 0.15s; }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-input);
+            font-size: 14px;
+            color: var(--text-primary);
+            font-family: inherit;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .form-group input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 0 20px rgba(37, 99, 235, 0.1);
+            transform: scale(1.01);
+        }
+        .form-group input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-group-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.5s ease-out 0.2s both;
+        }
+        .form-group-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .form-group-checkbox input[type="checkbox"]:hover {
+            transform: scale(1.15);
+        }
+        .form-group-checkbox label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 11px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-btn);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            animation: fadeInUp 0.5s ease-out 0.25s both;
+        }
+        .btn-login:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(37,99,235,0.35);
+        }
+        .btn-login:active {
+            transform: scale(0.97);
+        }
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ===== Error Message ===== */
+        .error-message {
+            display: none;
+            margin-top: 16px;
+            padding: 10px 14px;
+            background: var(--error-light);
+            border: 1px solid var(--error);
+            border-radius: var(--radius-sm);
+            color: var(--error);
+            font-size: 13px;
+            text-align: center;
+            animation: fadeInUp 0.3s ease-out;
+        }
+        .error-message.visible {
+            display: block;
+        }
+
+        /* ===== Footer ===== */
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* ===== Mobile ===== */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 28px 24px;
+                border-radius: var(--radius-md);
+            }
+            .theme-toggle {
+                top: 16px;
+                right: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="themeToggle" data-mode="light" aria-label="切换主题" title="切换主题模式">
+        <!-- Sun icon (light mode) -->
+        <svg class="icon-sun" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <!-- Moon icon (dark mode) -->
+        <svg class="icon-moon" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <!-- System/monitor icon -->
+        <svg class="icon-system" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+    </button>
+
+    <!-- Login Card -->
+    <div class="login-container">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+            </div>
+            <span class="logo-text">寝室签到助手</span>
+        </div>
+        <p class="subtitle">校园寝室自助签到系统</p>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="studentId">学号</label>
+                <input type="text" id="studentId" name="studentId" placeholder="请输入学号" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required autocomplete="current-password">
+            </div>
+            <div class="form-group-checkbox">
+                <input type="checkbox" id="rememberMe" name="rememberMe">
+                <label for="rememberMe">记住我（30天内自动登录）</label>
+            </div>
+            <button type="submit" class="btn-login" id="loginBtn">登 录</button>
+        </form>
+        <div class="error-message" id="errorMessage"></div>
+        <div class="footer">WhiteEmpties · Powered by LangChain4j + Spring Boot</div>
+    </div>
+
+    <script>
+        /* ===== Theme Management ===== */
+        (function() {
+            const MODES = ['light', 'dark', 'system'];
+            const toggle = document.getElementById('themeToggle');
+
+            function applyTheme(mode) {
+                if (mode === 'system') {
+                    document.documentElement.removeAttribute('data-theme');
+                } else {
+                    document.documentElement.setAttribute('data-theme', mode);
+                }
+                localStorage.setItem('theme', mode);
+                toggle.setAttribute('data-mode', mode);
+            }
+
+            function initTheme() {
+                var saved = localStorage.getItem('theme') || 'light';
+                applyTheme(saved);
+            }
+
+            toggle.addEventListener('click', function() {
+                var current = toggle.getAttribute('data-mode');
+                var idx = MODES.indexOf(current);
+                var next = MODES[(idx + 1) % MODES.length];
+                applyTheme(next);
+            });
+
+            initTheme();
+        })();
+
+        /* ===== Login Form ===== */
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const studentId = document.getElementById('studentId').value.trim();
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            const errorDiv = document.getElementById('errorMessage');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!studentId || !password) {
+                errorDiv.textContent = '请输入学号和密码';
+                errorDiv.classList.add('visible');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = '登录中...';
+            errorDiv.classList.remove('visible');
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ studentId, password, rememberMe })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = data.message || '登录失败，请重试';
+                    errorDiv.classList.add('visible');
+                }
+            } catch (err) {
+                errorDiv.textContent = '网络错误，请稍后重试';
+                errorDiv.classList.add('visible');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '登 录';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+#target/
+.git/
+*.md
+teacher_reference_src/
+docs/
+.claude/
+.idea/
+*.iml
