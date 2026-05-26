@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface AiChatService {
 
-    String chatStream(String userId, String message);
+    String chatStream(String userId, String studentName, String className, String message);
 
     Page<ChatHistoryVo> queryChatHistory(String userId, Pageable page);
 

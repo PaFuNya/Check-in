@@ -61,6 +61,9 @@ public class AuthServiceImpl implements AuthService {
         // 登录成功, 写入 session
         session.setAttribute("studentId", student.getStudentId());
         session.setAttribute("studentName", student.getStudentName());
+        session.setAttribute("className", student.getClassName());
+        session.setAttribute("phoneNumber", student.getPhoneNumber());
+        session.setAttribute("avatarUrl", student.getAvatarUrl());
 
         // 处理 rememberMe
         if (rememberMe) {
@@ -130,16 +133,65 @@ public class AuthServiceImpl implements AuthService {
         Map<String, Object> result = new HashMap<>();
         String studentId = (String) session.getAttribute("studentId");
         String studentName = (String) session.getAttribute("studentName");
+        String className = (String) session.getAttribute("className");
+        String phoneNumber = (String) session.getAttribute("phoneNumber");
+        String avatarUrl = (String) session.getAttribute("avatarUrl");
 
         if (studentId == null) {
             result.put("loggedIn", false);
             result.put("studentId", null);
             result.put("studentName", null);
+            result.put("className", null);
+            result.put("phoneNumber", null);
+            result.put("avatarUrl", null);
         } else {
             result.put("loggedIn", true);
             result.put("studentId", studentId);
             result.put("studentName", studentName);
+            result.put("className", className != null ? className : "");
+            result.put("phoneNumber", phoneNumber != null ? phoneNumber : "");
+            result.put("avatarUrl", avatarUrl != null ? avatarUrl : "");
         }
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getProfile(String studentId) {
+        Map<String, Object> result = new HashMap<>();
+        Optional<StudentEntity> optionalStudent = studentRepository.findById(studentId);
+        if (optionalStudent.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "用户不存在");
+            return result;
+        }
+        StudentEntity student = optionalStudent.get();
+        result.put("success", true);
+        result.put("studentId", student.getStudentId());
+        result.put("studentName", student.getStudentName());
+        result.put("className", student.getClassName() != null ? student.getClassName() : "");
+        result.put("phoneNumber", student.getPhoneNumber() != null ? student.getPhoneNumber() : "");
+        result.put("avatarUrl", student.getAvatarUrl() != null ? student.getAvatarUrl() : "");
+        result.put("dormBuilding", student.getDormBuilding() != null ? student.getDormBuilding() : "");
+        result.put("roomNumber", student.getRoomNumber() != null ? student.getRoomNumber() : "");
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> updateProfile(String studentId, String className, String phoneNumber, String avatarUrl) {
+        Map<String, Object> result = new HashMap<>();
+        Optional<StudentEntity> optionalStudent = studentRepository.findById(studentId);
+        if (optionalStudent.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "用户不存在");
+            return result;
+        }
+        StudentEntity student = optionalStudent.get();
+        student.setClassName(className);
+        student.setPhoneNumber(phoneNumber);
+        student.setAvatarUrl(avatarUrl);
+        studentRepository.save(student);
+        result.put("success", true);
+        result.put("message", "个人信息更新成功");
         return result;
     }
 
