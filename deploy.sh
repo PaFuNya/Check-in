@@ -1,103 +1,101 @@
 #!/bin/bash
-# ============================================
-# 校园寝室自助签到系统 — 一键部署脚本
-# 用法: ./deploy.sh
-# ============================================
-set -e
+# 校园寝室自助签到系统 - 部署脚本
+# 使用方法: bash deploy.sh [start|stop|restart|status|build]
 
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-IMAGE_NAME="campus-checkin"
-CONTAINER_NAME="campus-checkin"
-MYSQL_CONTAINER="1Panel-mysql-RIP6"
-DB_NAME="checkin_db"
-DB_NETWORK="1panel-network"
-APP_PORT="8088"
+APP_NAME="campus-checkin-assistant"
+APP_JAR="target/${APP_NAME}-1.0-SNAPSHOT.jar"
+PORT=8088
+LOG_FILE="/tmp/app.log"
+PID_FILE="/tmp/app.pid"
 
-echo "=========================================="
-echo "  校园寝室自助签到系统 — 自动部署"
-echo "=========================================="
+# 颜色
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-# 1. 检查 MySQL 容器
-echo ""
-echo "[1/6] 检查 MySQL 容器..."
-if ! docker ps --format '{{.Names}}' | grep -q "$MYSQL_CONTAINER"; then
-    echo "  错误: MySQL 容器 $MYSQL_CONTAINER 未运行"
-    echo "  请先在 1Panel 中启动 MySQL 容器"
-    exit 1
-fi
-echo "  MySQL 容器运行中 ✓"
+get_pid() {
+    pgrep -f "${APP_JAR}" 2>/dev/null | head -1
+}
 
-# 2. 创建数据库
-echo ""
-echo "[2/6] 确保数据库存在..."
-docker exec "$MYSQL_CONTAINER" mysql -uroot -p'pafunya@520wuerwu' \
-    -e "CREATE DATABASE IF NOT EXISTS $DB_NAME DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null
-echo "  数据库 $DB_NAME 就绪 ✓"
-
-# 3. 停止旧容器
-echo ""
-echo "[3/6] 清理旧容器..."
-if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-    docker stop "$CONTAINER_NAME" 2>/dev/null || true
-    docker rm "$CONTAINER_NAME" 2>/dev/null || true
-    echo "  旧容器已清理 ✓"
-else
-    echo "  无需清理 ✓"
-fi
-
-# 4. 构建镜像
-echo ""
-echo "[4/6] 构建 Docker 镜像（首次约 3-5 分钟）..."
-cd "$PROJECT_DIR"
-docker build -t "$IMAGE_NAME:latest" .
-echo "  镜像构建完成 ✓"
-
-# 5. 创建环境变量文件
-echo ""
-echo "[5/6] 配置环境变量..."
-cat > /tmp/checkin.env << EOF
-SPRING_DATASOURCE_URL=jdbc:mysql://${MYSQL_CONTAINER}:3306/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-SPRING_DATASOURCE_USERNAME=root
-SPRING_DATASOURCE_PASSWORD=pafunya@520wuerwu
-JAVA_OPTS=-Xmx256m -Xms128m
-EOF
-echo "  环境变量配置完成 ✓"
-
-# 6. 启动容器
-echo ""
-echo "[6/6] 启动容器（端口 $APP_PORT）..."
-docker run -d \
-    --name "$CONTAINER_NAME" \
-    --network "$DB_NETWORK" \
-    -p "$APP_PORT:8080" \
-    --env-file /tmp/checkin.env \
-    --restart unless-stopped \
-    "$IMAGE_NAME:latest"
-echo "  容器启动完成 ✓"
-
-# 等待启动
-echo ""
-echo "等待应用启动..."
-for i in $(seq 1 30); do
-    if curl -sf "http://localhost:$APP_PORT/login" > /dev/null 2>&1; then
-        echo ""
-        echo "=========================================="
-        echo "  部署成功！"
-        echo "  访问地址: http://localhost:$APP_PORT"
-        echo "  容器名称: $CONTAINER_NAME"
-        echo "  查看日志: docker logs -f $CONTAINER_NAME"
-        echo "  重启应用: docker restart $CONTAINER_NAME"
-        echo "  停止应用: docker stop $CONTAINER_NAME"
-        echo "=========================================="
-        rm -f /tmp/checkin.env
-        exit 0
+do_build() {
+    echo -e "${YELLOW}[BUILD] 编译打包中...${NC}"
+    mvn clean package -DskipTests -q
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}[BUILD] 编译成功: ${APP_JAR}${NC}"
+    else
+        echo -e "${RED}[BUILD] 编译失败!${NC}"
+        exit 1
     fi
-    printf "."
-    sleep 2
-done
+}
 
-echo ""
-echo "  警告: 应用启动超时，请检查日志:"
-echo "  docker logs $CONTAINER_NAME"
-rm -f /tmp/checkin.env
-exit 1
+do_start() {
+    PID=$(get_pid)
+    if [ -n "$PID" ]; then
+        echo -e "${YELLOW}[START] 应用已在运行 (PID: $PID)${NC}"
+        return
+    fi
+
+    echo -e "${YELLOW}[START] 启动应用 (端口: $PORT)...${NC}"
+    nohup java -jar "$APP_JAR" --server.port=$PORT > "$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+
+    # 等待启动
+    for i in $(seq 1 30); do
+        sleep 1
+        HTTP_CODE=$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' http://127.0.0.1:$PORT/login 2>/dev/null)
+        if [ "$HTTP_CODE" = "200" ]; then
+            echo -e "${GREEN}[START] 启动成功! PID: $(cat $PID_FILE)${NC}"
+            return
+        fi
+    done
+    echo -e "${RED}[START] 启动超时，请检查日志: $LOG_FILE${NC}"
+}
+
+do_stop() {
+    PID=$(get_pid)
+    if [ -z "$PID" ]; then
+        echo -e "${YELLOW}[STOP] 应用未运行${NC}"
+        return
+    fi
+
+    echo -e "${YELLOW}[STOP] 停止应用 (PID: $PID)...${NC}"
+    kill "$PID" 2>/dev/null
+    sleep 2
+
+    # 强制停止
+    if kill -0 "$PID" 2>/dev/null; then
+        kill -9 "$PID" 2>/dev/null
+    fi
+
+    echo -e "${GREEN}[STOP] 已停止${NC}"
+}
+
+do_status() {
+    PID=$(get_pid)
+    if [ -n "$PID" ]; then
+        HTTP_CODE=$(curl -s --noproxy '*' -o /dev/null -w '%{http_code}' http://127.0.0.1:$PORT/login 2>/dev/null)
+        echo -e "${GREEN}[STATUS] 运行中 | PID: $PID | HTTP: $HTTP_CODE | 端口: $PORT${NC}"
+    else
+        echo -e "${RED}[STATUS] 未运行${NC}"
+    fi
+}
+
+do_restart() {
+    do_stop
+    sleep 2
+    do_start
+}
+
+# 主逻辑
+case "${1:-restart}" in
+    build)    do_build ;;
+    start)    do_start ;;
+    stop)     do_stop ;;
+    restart)  do_build && do_restart ;;
+    status)   do_status ;;
+    *)
+        echo "用法: $0 {build|start|stop|restart|status}"
+        exit 1
+        ;;
+esac
