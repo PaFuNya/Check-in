@@ -21,6 +21,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/auth/logout",
                         "/auth/check",
                         "/login.html",
+                        "/login",
                         "/error",
                         "/css/**",
                         "/js/**",
