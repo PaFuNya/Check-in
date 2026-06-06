@@ -98,6 +98,16 @@
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
+        <!-- Redis -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
         <!-- JWT (Phase 3 使用, Phase 1 先行引入) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
