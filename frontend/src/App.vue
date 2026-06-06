@@ -1,7 +1,7 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { useAuthStore } from '@/stores/auth'
 </script>
 
 <template>
-  <HelloWorld />
+  <router-view />
 </template>

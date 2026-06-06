@@ -10,27 +10,30 @@ const routes = [
   },
   {
     path: '/',
-    name: 'Home',
-    component: () => import('@/views/HomeView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/checkin',
-    name: 'CheckIn',
-    component: () => import('@/views/CheckInView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/records',
-    name: 'Records',
-    component: () => import('@/views/RecordsView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/chat',
-    name: 'Chat',
-    component: () => import('@/views/ChatView.vue'),
-    meta: { requiresAuth: true }
+    component: () => import('@/layouts/DefaultLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Home',
+        component: () => import('@/views/HomeView.vue'),
+      },
+      {
+        path: 'checkin',
+        name: 'CheckIn',
+        component: () => import('@/views/CheckInView.vue'),
+      },
+      {
+        path: 'records',
+        name: 'Records',
+        component: () => import('@/views/RecordsView.vue'),
+      },
+      {
+        path: 'chat',
+        name: 'Chat',
+        component: () => import('@/views/ChatView.vue'),
+      },
+    ]
   },
   {
     // Catch-all redirect to home
@@ -53,11 +56,13 @@ router.beforeEach(async (to, from, next) => {
     await authStore.checkAuth()
   }
 
-  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
-    // Route requires login but user is not authenticated
+  // Check if the route or any parent requires auth
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+
+  if (requiresAuth && !authStore.isLoggedIn) {
     next({ name: 'Login' })
-  } else if (to.meta.requiresGuest && authStore.isLoggedIn) {
-    // Route is guest-only (e.g. login page) but user is already logged in
+  } else if (requiresGuest && authStore.isLoggedIn) {
     next({ name: 'Home' })
   } else {
     next()
