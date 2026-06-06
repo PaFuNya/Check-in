@@ -3,23 +3,15 @@ package org.example.controller;
 import jakarta.servlet.http.HttpSession;
 import org.example.common.ApiResponse;
 import org.example.entity.CheckInRecordEntity;
-import org.example.entity.LeaveRequestEntity;
 import org.example.repository.CheckInRecordRepository;
-import org.example.repository.LeaveRequestRepository;
 import org.example.service.AiChatService;
-import org.example.vo.ChatHistoryVo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -30,9 +22,6 @@ public class ApiAiController {
 
     @Autowired
     private CheckInRecordRepository checkInRecordRepository;
-
-    @Autowired
-    private LeaveRequestRepository leaveRequestRepository;
 
     /**
      * GET /api/ai/chat-stream — SSE 流式 AI 对话
@@ -72,58 +61,12 @@ public class ApiAiController {
     }
 
     /**
-     * GET /api/ai/chat-history — 分页查询聊天历史
+     * GET /api/ai/records — 查询签到记录（非分页，供 AI 使用）
      */
-    @GetMapping("/chat-history")
-    public ApiResponse<Map<String, Object>> chatHistory(
-            @RequestParam(value = "userId", defaultValue = "111") String userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            HttpSession session) {
-        String studentId = (String) session.getAttribute("studentId");
-        if (studentId != null && !studentId.isEmpty()) {
-            userId = studentId;
-        }
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<ChatHistoryVo> pageResult = aiChatService.queryChatHistory(userId, pageable);
-
-        Map<String, Object> data = Map.of(
-                "content", pageResult.getContent(),
-                "totalPages", pageResult.getTotalPages(),
-                "totalElements", pageResult.getTotalElements(),
-                "currentPage", pageResult.getNumber(),
-                "size", pageResult.getSize()
-        );
-        return ApiResponse.ok(data);
-    }
-
-    /**
-     * POST /api/ai/clear-chat-history/{userId} — 清除聊天历史
-     */
-    @PostMapping("/clear-chat-history/{userId}")
-    public ApiResponse<Void> clearChatHistory(@PathVariable("userId") String userId) {
-        aiChatService.clearChatHistory(userId);
-        return ApiResponse.ok();
-    }
-
-    /**
-     * GET /api/ai/check-in-records — 查询签到记录（非分页，供 AI 使用）
-     */
-    @GetMapping("/check-in-records")
+    @GetMapping("/records")
     public ApiResponse<List<CheckInRecordEntity>> checkInRecords(
             @RequestParam("studentId") String studentId) {
         List<CheckInRecordEntity> records = checkInRecordRepository.findByStudentId(studentId);
         return ApiResponse.ok(records);
-    }
-
-    /**
-     * GET /api/ai/leave-requests — 查询请假记录（供 AI 使用）
-     */
-    @GetMapping("/leave-requests")
-    public ApiResponse<List<LeaveRequestEntity>> leaveRequests(
-            @RequestParam("studentId") String studentId) {
-        List<LeaveRequestEntity> requests = leaveRequestRepository.findByStudentId(studentId);
-        return ApiResponse.ok(requests);
     }
 }
