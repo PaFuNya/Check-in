@@ -1,24 +1,24 @@
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import gsap from 'gsap'
 
 const router = useRouter()
 
-// ---- Pagination state ----
+// --- State ---
 const records = ref([])
 const currentPage = ref(0)
+const pageSize = ref(10)
 const totalPages = ref(0)
 const totalElements = ref(0)
-const pageSize = ref(10)
 const loading = ref(true)
-const error = ref('')
+const error = ref(null)
 
-// ---- Fetch records ----
+// --- Fetch records ---
 async function fetchRecords(page = 0) {
   loading.value = true
-  error.value = ''
+  error.value = null
   try {
     const res = await axios.get('/api/checkin/records', {
       params: { page, size: pageSize.value }
@@ -29,666 +29,495 @@ async function fetchRecords(page = 0) {
       totalPages.value = data.totalPages || 0
       totalElements.value = data.totalElements || 0
       currentPage.value = data.currentPage ?? page
-
-      // Trigger stagger animation after DOM updates
+      // Trigger stagger animation after DOM update
       await nextTick()
       animateList()
     } else {
       error.value = res.data.message || '获取记录失败'
     }
   } catch (err) {
-    if (err.response?.data?.message) {
-      error.value = err.response.data.message
-    } else {
-      error.value = '网络错误，请检查后端服务'
-    }
+    error.value = '网络错误，请稍后重试'
   } finally {
     loading.value = false
   }
 }
 
-// ---- GSAP stagger animation ----
+// --- Pagination ---
+function goToPage(page) {
+  if (page < 0 || page >= totalPages.value) return
+  fetchRecords(page)
+}
+
+function prevPage() {
+  if (currentPage.value > 0) goToPage(currentPage.value - 1)
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value - 1) goToPage(currentPage.value + 1)
+}
+
+// --- GSAP stagger animation ---
 function animateList() {
   const items = document.querySelectorAll('.record-item')
-  if (!items.length) return
-
+  if (items.length === 0) return
   gsap.fromTo(
     items,
-    { opacity: 0, y: 30, scale: 0.96 },
+    { opacity: 0, y: 24, scale: 0.97 },
     {
       opacity: 1,
       y: 0,
       scale: 1,
-      duration: 0.45,
-      ease: 'power3.out',
-      stagger: 0.08,
+      duration: 0.4,
+      stagger: 0.06,
+      ease: 'power2.out',
+      clearProps: 'transform'
     }
   )
 }
 
-// ---- Pagination helpers ----
-function goToPage(page) {
-  if (page < 0 || page >= totalPages.value || page === currentPage.value) return
-  fetchRecords(page)
-  // Smooth scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+// --- Format date ---
+function formatDate(dateStr) {
+  if (!dateStr) return '--'
+  const d = new Date(dateStr)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-const pageNumbers = ref([])
-
-function computePageNumbers() {
-  const pages = []
-  const total = totalPages.value
-  const cur = currentPage.value
-
-  if (total <= 7) {
-    for (let i = 0; i < total; i++) pages.push(i)
-  } else {
-    pages.push(0)
-    if (cur > 3) pages.push('...')
-    const start = Math.max(1, cur - 1)
-    const end = Math.min(total - 2, cur + 1)
-    for (let i = start; i <= end; i++) pages.push(i)
-    if (cur < total - 4) pages.push('...')
-    pages.push(total - 1)
-  }
-  pageNumbers.value = pages
+// --- Status display ---
+function statusLabel(status) {
+  if (!status) return '未知'
+  const s = String(status).toLowerCase()
+  if (s === 'success' || s === 'verified' || s === '正常') return '正常'
+  if (s === 'failed' || s === 'fail') return '异常'
+  return status
 }
 
-watch(totalPages, computePageNumbers)
-watch(currentPage, computePageNumbers)
-
-// ---- Format helpers ----
-function formatTime(timeStr) {
-  if (!timeStr) return '--'
-  const d = new Date(timeStr)
-  if (isNaN(d.getTime())) return timeStr
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const hour = String(d.getHours()).padStart(2, '0')
-  const min = String(d.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hour}:${min}`
+function statusClass(status) {
+  const s = String(status || '').toLowerCase()
+  if (s === 'success' || s === 'verified' || s === '正常') return 'status-success'
+  return 'status-fail'
 }
 
-function formatDate(timeStr) {
-  if (!timeStr) return '--'
-  const d = new Date(timeStr)
-  if (isNaN(d.getTime())) return '--'
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${month}/${day}`
-}
-
-function formatWeekday(timeStr) {
-  if (!timeStr) return ''
-  const d = new Date(timeStr)
-  if (isNaN(d.getTime())) return ''
-  return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
-}
-
-function formatLocation(loc) {
-  if (!loc) return '--'
-  // loc is like "29.991316,122.179503"
-  const parts = loc.split(',')
-  if (parts.length === 2) {
-    return `${parseFloat(parts[0]).toFixed(4)}°N, ${parseFloat(parts[1]).toFixed(4)}°E`
-  }
-  return loc
-}
-
-// ---- Entrance animation ----
 onMounted(() => {
-  fetchRecords()
-
-  // Animate header entrance
-  nextTick(() => {
-    const header = document.querySelector('.page-header')
-    if (header) {
-      gsap.fromTo(header, { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' })
-    }
-    const summaryBar = document.querySelector('.summary-bar')
-    if (summaryBar) {
-      gsap.fromTo(summaryBar, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, delay: 0.15, ease: 'power3.out' })
-    }
-  })
+  fetchRecords(0)
 })
 </script>
 
 <template>
   <div class="records-page">
-    <!-- Background glow orbs -->
-    <div class="glow glow-1"></div>
-    <div class="glow glow-2"></div>
+    <!-- Header -->
+    <header class="page-header">
+      <button class="back-btn" @click="router.push('/')">← 返回</button>
+      <h1>📋 签到记录</h1>
+      <span class="total-badge" v-if="totalElements > 0">共 {{ totalElements }} 条</span>
+    </header>
 
-    <!-- Top bar -->
-    <div class="page-header">
-      <button class="back-btn" @click="router.push('/')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-        返回
-      </button>
-      <h1 class="page-title">签到记录</h1>
-      <div style="width: 64px"></div>
+    <!-- Loading state -->
+    <div v-if="loading" class="glass-card loading-state">
+      <div class="spinner"></div>
+      <p>加载中...</p>
     </div>
 
-    <!-- Summary bar -->
-    <div class="summary-bar" v-if="!loading && !error">
-      <div class="summary-stat">
-        <span class="stat-number">{{ totalElements }}</span>
-        <span class="stat-label">总签到次数</span>
-      </div>
-      <div class="summary-divider"></div>
-      <div class="summary-stat">
-        <span class="stat-number">{{ totalPages }}</span>
-        <span class="stat-label">页</span>
-      </div>
+    <!-- Error state -->
+    <div v-else-if="error" class="glass-card error-state">
+      <p class="error-text">⚠️ {{ error }}</p>
+      <button class="retry-btn" @click="fetchRecords(currentPage)">重试</button>
     </div>
 
-    <!-- Content container -->
-    <div class="content-container">
-      <!-- Loading state -->
-      <div v-if="loading" class="state-card">
-        <div class="spinner"></div>
-        <p class="state-text">正在加载签到记录...</p>
-      </div>
+    <!-- Empty state -->
+    <div v-else-if="records.length === 0" class="glass-card empty-state">
+      <div class="empty-icon">📭</div>
+      <p class="empty-title">暂无签到记录</p>
+      <p class="empty-hint">完成签到后，记录将在此显示</p>
+      <button class="go-checkin-btn" @click="router.push('/checkin')">去签到</button>
+    </div>
 
-      <!-- Error state -->
-      <div v-else-if="error" class="state-card error-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="15" y1="9" x2="9" y2="15"/>
-          <line x1="9" y1="9" x2="15" y2="15"/>
-        </svg>
-        <p class="state-text">{{ error }}</p>
-        <button class="retry-btn" @click="fetchRecords(currentPage)">重试</button>
-      </div>
-
-      <!-- Empty state -->
-      <div v-else-if="records.length === 0" class="state-card">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
-        </svg>
-        <p class="state-text">暂无签到记录</p>
-        <p class="state-hint">完成签到后，记录将在这里显示</p>
-        <button class="primary-btn" @click="router.push('/checkin')">去签到</button>
-      </div>
-
-      <!-- Records list -->
-      <div v-else class="records-list">
+    <!-- Records list -->
+    <template v-else>
+      <div class="records-list">
         <div
           v-for="(record, index) in records"
           :key="record.id || index"
-          class="record-item"
+          class="record-item glass-card"
         >
-          <div class="record-left">
-            <div class="record-date-badge">
-              <span class="date-day">{{ formatDate(record.checkTime).split('/')[1] }}</span>
-              <span class="date-month">{{ formatDate(record.checkTime).split('/')[0] }}月</span>
-            </div>
-          </div>
-
-          <div class="record-center">
-            <div class="record-top-row">
-              <span class="record-time">{{ formatTime(record.checkTime) }}</span>
-              <span class="record-weekday">{{ formatWeekday(record.checkTime) }}</span>
-            </div>
-            <div class="record-details">
-              <span class="detail-chip" v-if="record.dormBuilding || record.roomNumber">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  <polyline points="9 22 9 12 15 12 15 22"/>
+          <div class="record-main">
+            <div class="record-left">
+              <div class="record-icon" :class="statusClass(record.status)">
+                <svg v-if="statusClass(record.status) === 'status-success'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                {{ record.dormBuilding || '' }}{{ record.roomNumber ? record.roomNumber + '室' : '' }}
-              </span>
-              <span class="detail-chip" v-if="record.locationInfo">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/>
-                  <circle cx="12" cy="10" r="3"/>
+                <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
                 </svg>
-                {{ formatLocation(record.locationInfo) }}
+              </div>
+              <div class="record-info">
+                <span class="record-time">{{ formatDate(record.checkTime) }}</span>
+                <span class="record-location" v-if="record.roomNumber || record.dormBuilding">
+                  🏠 {{ record.dormBuilding || '' }}{{ record.roomNumber || '' }}
+                </span>
+                <span class="record-location" v-if="record.locationInfo">
+                  📍 {{ record.locationInfo }}
+                </span>
+              </div>
+            </div>
+            <div class="record-right">
+              <span class="status-tag" :class="statusClass(record.status)">
+                {{ statusLabel(record.status) }}
               </span>
             </div>
-          </div>
-
-          <div class="record-right">
-            <span class="status-badge" :class="{ 'status-ok': record.status === '已签到' }">
-              {{ record.status || '已签到' }}
-            </span>
           </div>
         </div>
       </div>
 
       <!-- Pagination -->
-      <div v-if="!loading && !error && totalPages > 1" class="pagination">
+      <div class="pagination glass-card">
         <button
           class="page-btn"
-          :disabled="currentPage === 0"
-          @click="goToPage(currentPage - 1)"
+          :disabled="currentPage <= 0"
+          @click="prevPage"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
+          ← 上一页
         </button>
-
-        <template v-for="(p, idx) in pageNumbers" :key="idx">
-          <span v-if="p === '...'" class="page-ellipsis">…</span>
-          <button
-            v-else
-            class="page-btn page-num"
-            :class="{ active: p === currentPage }"
-            @click="goToPage(p)"
-          >
-            {{ p + 1 }}
-          </button>
-        </template>
-
+        <div class="page-info">
+          <span class="page-current">{{ currentPage + 1 }}</span>
+          <span class="page-sep">/</span>
+          <span class="page-total">{{ totalPages }}</span>
+        </div>
         <button
           class="page-btn"
-          :disabled="currentPage === totalPages - 1"
-          @click="goToPage(currentPage + 1)"
+          :disabled="currentPage >= totalPages - 1"
+          @click="nextPage"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
+          下一页 →
         </button>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
 .records-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-  position: relative;
-  overflow: hidden;
-  padding: 0 0 40px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 0 32px;
 }
 
-/* ---- Background glows ---- */
-.glow {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.4;
-  pointer-events: none;
-  animation: float 10s ease-in-out infinite;
-}
-.glow-1 {
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, #667eea, #764ba2);
-  top: -80px;
-  left: -80px;
-}
-.glow-2 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, #4facfe, #00f2fe);
-  bottom: -60px;
-  right: -60px;
-  animation-delay: -4s;
-}
-@keyframes float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(25px, -25px) scale(1.05); }
-  50% { transform: translate(-15px, 15px) scale(0.95); }
-  75% { transform: translate(10px, 10px) scale(1.02); }
-}
-
-/* ---- Page header ---- */
+/* ---- Header ---- */
 .page-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  position: relative;
-  z-index: 2;
+  gap: 12px;
+  margin-bottom: 24px;
 }
+
+.page-header h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary, #1a1a1a);
+  margin: 0;
+}
+
+.total-badge {
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #9ca3af);
+  background: rgba(99, 102, 241, 0.08);
+  padding: 2px 10px;
+  border-radius: 9999px;
+  margin-left: auto;
+}
+
 .back-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  padding: 8px 14px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.875rem;
+  padding: 6px 14px;
+  border: 1px solid var(--border, #E5E5E3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  color: var(--text-secondary, #6b7280);
   cursor: pointer;
-  backdrop-filter: blur(10px);
+  font-size: 0.85rem;
   transition: all 0.2s;
 }
+
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-}
-.page-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary, #1a1a1a);
 }
 
-/* ---- Summary bar ---- */
-.summary-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  margin: 0 20px 20px;
-  padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  position: relative;
-  z-index: 2;
-}
-.summary-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.stat-number {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1;
-}
-.stat-label {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.45);
-}
-.summary-divider {
-  width: 1px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.15);
+/* ---- Glass Card ---- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
 }
 
-/* ---- Content container ---- */
-.content-container {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 0 16px;
-  position: relative;
-  z-index: 2;
+:root.dark .glass-card,
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
-/* ---- State cards (loading / error / empty) ---- */
-.state-card {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 48px 32px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.6);
-}
-.state-card svg {
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-.state-text {
-  font-size: 0.95rem;
-  margin: 0 0 8px;
-  color: rgba(255, 255, 255, 0.7);
-}
-.state-hint {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.4);
-  margin: 0 0 20px;
-}
-.error-state svg {
-  color: #ef4444;
-  opacity: 0.7;
-}
-
-/* ---- Spinner ---- */
-.spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(255, 255, 255, 0.15);
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  margin: 0 auto 16px;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ---- Buttons ---- */
-.retry-btn, .primary-btn {
-  padding: 10px 22px;
-  border: none;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
-.retry-btn {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-.retry-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-.primary-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-.primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.45);
-}
-
-/* ---- Records list ---- */
+/* ---- Records List ---- */
 .records-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 20px;
 }
 
 .record-item {
+  padding: 16px 20px;
+  opacity: 0; /* GSAP will animate to 1 */
+}
+
+.record-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.record-left {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 18px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  transition: all 0.25s ease;
-  /* Initial state for GSAP — will be overridden by animation */
-  opacity: 0;
-  transform: translateY(30px);
-}
-.record-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.18);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
-}
-
-/* ---- Record left: date badge ---- */
-.record-left {
-  flex-shrink: 0;
-}
-.record-date-badge {
-  width: 48px;
-  height: 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  gap: 1px;
-}
-.date-day {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.1;
-}
-.date-month {
-  font-size: 0.625rem;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 500;
-}
-
-/* ---- Record center: info ---- */
-.record-center {
   flex: 1;
   min-width: 0;
 }
-.record-top-row {
+
+.record-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 6px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
+
+.record-icon.status-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.record-icon.status-fail {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.record-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
 .record-time {
   font-size: 0.9rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-}
-.record-weekday {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
-}
-.record-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.detail-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 2px 8px;
-}
-.detail-chip svg {
-  flex-shrink: 0;
-  opacity: 0.6;
+  color: var(--text-primary, #1a1a1a);
 }
 
-/* ---- Record right: status ---- */
+.record-location {
+  font-size: 0.78rem;
+  color: var(--text-secondary, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .record-right {
   flex-shrink: 0;
 }
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
+
+.status-tag {
+  display: inline-block;
+  padding: 3px 12px;
   border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  font-weight: 500;
 }
-.status-badge.status-ok {
-  background: rgba(5, 150, 105, 0.2);
-  color: #34d399;
-  border-color: rgba(5, 150, 105, 0.25);
+
+.status-tag.status-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.status-tag.status-fail {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
 }
 
 /* ---- Pagination ---- */
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 24px;
-  padding: 16px 0;
+  justify-content: space-between;
+  padding: 12px 20px;
 }
+
 .page-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  height: 36px;
-  padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.8rem;
+  padding: 8px 18px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.06);
+  color: #4f46e5;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  backdrop-filter: blur(10px);
 }
+
 .page-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
 }
+
 .page-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.4;
   cursor: not-allowed;
 }
-.page-btn.active {
+
+.page-info {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.page-current {
+  font-weight: 700;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.page-sep {
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.page-total {
+  color: var(--text-secondary, #6b7280);
+}
+
+/* ---- Loading ---- */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(99, 102, 241, 0.15);
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Error ---- */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 0.9rem;
+}
+
+.retry-btn {
+  padding: 8px 24px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+/* ---- Empty ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 8px;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.empty-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  margin: 0;
+}
+
+.empty-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  margin: 0;
+}
+
+.go-checkin-btn {
+  margin-top: 16px;
+  padding: 10px 28px;
+  border: none;
+  border-radius: 10px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
-  border-color: transparent;
-  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.35);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
 }
-.page-ellipsis {
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 0.85rem;
-  padding: 0 4px;
+
+.go-checkin-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 480px) {
-  .summary-bar {
-    margin: 0 12px 16px;
-    padding: 14px 20px;
-    gap: 20px;
-  }
-  .content-container {
-    padding: 0 10px;
-  }
   .record-item {
-    padding: 14px 14px;
-    gap: 10px;
+    padding: 12px 14px;
   }
-  .record-date-badge {
-    width: 42px;
-    height: 46px;
+
+  .record-icon {
+    width: 34px;
+    height: 34px;
   }
-  .date-day {
-    font-size: 1.1rem;
-  }
+
   .record-time {
     font-size: 0.82rem;
-  }
-  .page-btn {
-    min-width: 32px;
-    height: 32px;
-    font-size: 0.75rem;
   }
 }
 </style>
