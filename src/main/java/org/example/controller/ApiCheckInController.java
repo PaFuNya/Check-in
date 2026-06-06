@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,8 +21,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.Duration;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +46,9 @@ public class ApiCheckInController {
 
     @Autowired
     private StudentRepository studentRepository;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     /**
      * GET /api/checkin/status - 查询今日签到状态
@@ -76,6 +82,12 @@ public class ApiCheckInController {
         String studentId = (String) session.getAttribute("studentId");
         if (studentId == null) {
             return ApiResponse.error(401, "未登录");
+        }
+
+        // Redis 签到防重检查
+        String todayKey = "checkin:today:" + studentId + ":" + new SimpleDateFormat("yyyyMMdd").format(new Date());
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(todayKey))) {
+            return ApiResponse.error(400, "今日已签到，请勿重复签到");
         }
 
         String faceImageData = (String) body.get("faceImageData");
@@ -128,6 +140,9 @@ public class ApiCheckInController {
             record.setLocationInfo(latitude + "," + longitude);
             record.setCheckTime(new Date());
             checkInRecordRepository.save(record);
+
+            // Redis 记录今日已签到，23小时过期
+            redisTemplate.opsForValue().set(todayKey, "1", Duration.ofHours(23));
 
             data.put("checkedIn", true);
             return ApiResponse.ok(data);
