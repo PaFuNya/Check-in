@@ -3,8 +3,6 @@ package org.example.controller;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.example.common.ApiResponse;
-import org.example.entity.StudentEntity;
-import org.example.repository.StudentRepository;
 import org.example.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,8 +22,6 @@ public class ApiAuthController {
     @Autowired
     private AuthService authService;
 
-    @Autowired
-    private StudentRepository studentRepository;
 
     /**
      * POST /api/auth/login - 学号密码登录
@@ -97,21 +92,12 @@ public class ApiAuthController {
             return ApiResponse.error(401, "未登录");
         }
 
-        Optional<StudentEntity> studentOpt = studentRepository.findById(studentId);
-        if (studentOpt.isEmpty()) {
+        Map<String, Object> profileData = authService.getProfile(studentId);
+        if (profileData == null) {
             return ApiResponse.error(404, "学生不存在");
         }
 
-        StudentEntity student = studentOpt.get();
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("studentId", student.getStudentId());
-        data.put("studentName", student.getStudentName());
-        data.put("className", student.getClassName());
-        data.put("phoneNumber", student.getPhoneNumber());
-        data.put("avatarUrl", student.getAvatarUrl());
-        data.put("dormBuilding", student.getDormBuilding());
-        data.put("roomNumber", student.getRoomNumber());
-        return ApiResponse.ok(data);
+        return ApiResponse.ok(profileData);
     }
 
     /**
