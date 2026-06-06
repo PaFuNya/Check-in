@@ -30,3 +30,4 @@ application-local.properties
 
 # Node.js
 frontend/node_modules/
+frontend/dist/
