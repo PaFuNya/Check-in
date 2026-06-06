@@ -8,7 +8,6 @@ import gsap from 'gsap'
 const router = useRouter()
 const authStore = useAuthStore()
 
-// --- Check-in status ---
 const checkedIn = ref(false)
 const checkInCount = ref(0)
 const statusLoading = ref(true)
@@ -21,24 +20,21 @@ async function fetchStatus() {
       checkedIn.value = res.data.data.checkedIn
       checkInCount.value = res.data.data.count
     }
-  } catch {
-    // silent
-  } finally {
+  } catch { /* silent */ } finally {
     statusLoading.value = false
   }
 }
 
 const statusText = computed(() => {
-  if (statusLoading.value) return '加载中...'
-  return checkedIn.value ? '今日已签到' : '今日未签到'
+  if (statusLoading.value) return '加载中'
+  return checkedIn.value ? '已签到' : '未签到'
 })
 
 const statusClass = computed(() => {
-  if (statusLoading.value) return 'status-loading'
-  return checkedIn.value ? 'status-done' : 'status-pending'
+  if (statusLoading.value) return 'badge-muted'
+  return checkedIn.value ? 'badge-success' : 'badge-error'
 })
 
-// --- Greeting ---
 const greeting = computed(() => {
   const h = new Date().getHours()
   if (h < 6) return '夜深了'
@@ -50,167 +46,125 @@ const greeting = computed(() => {
   return '夜深了'
 })
 
-// --- Date ---
 const today = computed(() => {
   const d = new Date()
   const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 星期${weekday}`
 })
 
-// --- GSAP breathe animation ---
+// GSAP breathe
 const btnRef = ref(null)
 let breatheTl = null
 
 onMounted(() => {
   fetchStatus()
 
-  // Breathe animation on the check-in button
+  // Entrance
+  gsap.from('.home-section', { y: 30, opacity: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out' })
+
   if (btnRef.value) {
     breatheTl = gsap.timeline({ repeat: -1, yoyo: true })
     breatheTl.to(btnRef.value, {
-      scale: 1.08,
-      boxShadow: '0 0 28px rgba(37, 99, 235, 0.35)',
-      duration: 1.4,
+      scale: 1.06,
+      boxShadow: '0 0 32px rgba(37, 99, 235, 0.35)',
+      duration: 1.5,
       ease: 'sine.inOut',
     })
     breatheTl.to(btnRef.value, {
       scale: 1.0,
       boxShadow: '0 0 8px rgba(37, 99, 235, 0.1)',
-      duration: 1.4,
+      duration: 1.5,
       ease: 'sine.inOut',
     })
   }
 })
 
 onUnmounted(() => {
-  if (breatheTl) {
-    breatheTl.kill()
-  }
+  if (breatheTl) breatheTl.kill()
 })
-
-// --- Quick actions ---
-function goCheckIn() {
-  router.push('/checkin')
-}
-
-function goRecords() {
-  router.push('/records')
-}
-
-function goChat() {
-  router.push('/chat')
-}
-
-function goProfile() {
-  router.push('/profile')
-}
 </script>
 
 <template>
   <div class="home-page">
-    <!-- Header: greeting + date -->
-    <section class="greeting-section">
+    <!-- Greeting -->
+    <section class="home-section greeting-section">
       <h1 class="greeting-title">{{ greeting }}，{{ authStore.displayName }}</h1>
       <p class="greeting-date">{{ today }}</p>
     </section>
 
-    <!-- Check-in Status Card -->
-    <section class="status-card">
-      <div class="status-header">
+    <!-- Status Card -->
+    <section class="home-section glass-card status-card">
+      <div class="status-top">
         <span class="status-label">签到状态</span>
-        <span class="status-badge" :class="statusClass">
-          {{ statusText }}
-        </span>
+        <span class="status-badge" :class="statusClass">{{ statusText }}</span>
       </div>
       <div class="status-body">
-        <div class="status-info">
-          <div class="status-count">
-            <span class="count-number">{{ statusLoading ? '--' : checkInCount }}</span>
-            <span class="count-label">今日签到次数</span>
-          </div>
-          <div v-if="checkedIn" class="status-hint">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm3.22 5.28-3.5 3.5a.75.75 0 0 1-1.06 0l-1.5-1.5a.75.75 0 1 1 1.06-1.06L7.19 9.19l2.97-2.97a.75.75 0 1 1 1.06 1.06Z" fill="currentColor"/>
-            </svg>
-            <span>签到完成，好好休息</span>
-          </div>
-          <div v-else class="status-hint">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 0 1 .75.75v3.5l2.1 1.26a.75.75 0 1 1-.76 1.3L7.63 9.38A.75.75 0 0 1 7.25 8.75v-4A.75.75 0 0 1 8 4Z" fill="currentColor"/>
-            </svg>
-            <span>记得及时签到哦</span>
-          </div>
+        <div class="status-count">
+          <span class="count-num">{{ statusLoading ? '--' : checkInCount }}</span>
+          <span class="count-unit">次</span>
+        </div>
+        <div class="status-hint">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+          </svg>
+          <span>{{ checkedIn ? '今日签到完成' : '记得及时签到' }}</span>
         </div>
       </div>
     </section>
 
-    <!-- Circular Check-in Button with GSAP breathe -->
-    <section class="checkin-action">
-      <button
-        ref="btnRef"
-        class="checkin-btn"
-        :class="{ 'checkin-btn-done': checkedIn }"
-        @click="goCheckIn"
-      >
-        <svg class="checkin-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-          <polyline points="22 4 12 14.01 9 11.01"/>
+    <!-- Check-in Button -->
+    <section class="home-section checkin-action">
+      <button ref="btnRef" class="checkin-btn cursor-pointer" :class="{ 'checkin-done': checkedIn }" @click="router.push('/checkin')">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
         </svg>
-        <span class="checkin-label">{{ checkedIn ? '已签到' : '签到' }}</span>
+        <span class="checkin-text">{{ checkedIn ? '已签到' : '签到' }}</span>
       </button>
       <p class="checkin-hint">点击进行寝室签到</p>
     </section>
 
-    <!-- Quick Actions Grid -->
-    <section class="quick-actions">
+    <!-- Quick Actions -->
+    <section class="home-section">
       <h2 class="section-title">快捷操作</h2>
       <div class="actions-grid">
-        <button class="action-card" @click="goCheckIn">
+        <button class="action-card glass-card cursor-pointer" @click="router.push('/checkin')">
           <div class="action-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </div>
-          <span class="action-label">签到打卡</span>
-          <span class="action-desc">人脸识别+GPS定位</span>
+          <span class="action-name">签到打卡</span>
+          <span class="action-desc">人脸识别 + GPS 定位</span>
         </button>
 
-        <button class="action-card" @click="goRecords">
+        <button class="action-card glass-card cursor-pointer" @click="router.push('/records')">
           <div class="action-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
             </svg>
           </div>
-          <span class="action-label">签到记录</span>
+          <span class="action-name">签到记录</span>
           <span class="action-desc">查看历史签到</span>
         </button>
 
-        <button class="action-card" @click="goChat">
+        <button class="action-card glass-card cursor-pointer" @click="router.push('/chat')">
           <div class="action-icon action-icon-ai">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4Z"/>
-              <path d="M6 10a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1a8 8 0 0 1-12 0v-1Z"/>
-              <path d="M9 18h6"/>
-              <path d="M10 22h4"/>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4Z" /><path d="M6 10a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1a8 8 0 0 1-12 0v-1Z" /><path d="M9 18h6" /><path d="M10 22h4" />
             </svg>
           </div>
-          <span class="action-label">AI 助手</span>
+          <span class="action-name">AI 助手</span>
           <span class="action-desc">智能问答与帮助</span>
         </button>
 
-        <button class="action-card" @click="goProfile">
+        <button class="action-card glass-card cursor-pointer" @click="router.push('/profile')">
           <div class="action-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
           </div>
-          <span class="action-label">个人信息</span>
+          <span class="action-name">个人信息</span>
           <span class="action-desc">查看与编辑资料</span>
         </button>
       </div>
@@ -225,45 +179,42 @@ function goProfile() {
   padding: 0 0 32px;
 }
 
-/* ---- Greeting ---- */
-.greeting-section {
+.home-section {
   margin-bottom: 20px;
 }
 
+/* Greeting */
 .greeting-title {
   font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary, #1a1a1a);
-  margin: 0;
-  line-height: 1.4;
+  font-weight: 800;
+  color: #1E293B;
+  margin: 0 0 2px;
+  letter-spacing: -0.02em;
 }
+
+:root.dark .greeting-title { color: #F1F5F9; }
 
 .greeting-date {
-  color: var(--text-secondary, #6b7280);
-  font-size: 0.875rem;
-  margin: 4px 0 0;
+  color: #64748B;
+  font-size: 0.8125rem;
+  margin: 0;
 }
 
-/* ---- Status Card ---- */
+/* Status Card */
 .status-card {
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border, #E5E5E3);
-  border-radius: var(--radius-lg, 14px);
   padding: 20px 24px;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
 }
 
-.status-header {
+.status-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .status-label {
-  font-size: 0.875rem;
-  color: var(--text-secondary, #6b7280);
+  font-size: 0.8125rem;
+  color: #64748B;
   font-weight: 500;
 }
 
@@ -273,135 +224,90 @@ function goProfile() {
   padding: 3px 12px;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-weight: 600;
 }
 
-.status-done {
-  background: var(--success-light, #ECFDF5);
-  color: var(--success, #059669);
-}
+.badge-success { background: #ECFDF5; color: #059669; }
+.badge-error { background: #FEF2F2; color: #DC2626; }
+.badge-muted { background: #F1F5F9; color: #94A3B8; }
 
-.status-pending {
-  background: var(--error-light, #FEF2F2);
-  color: var(--error, #DC2626);
-}
+:root.dark .badge-success { background: rgba(5, 150, 105, 0.15); }
+:root.dark .badge-error { background: rgba(220, 38, 38, 0.15); }
+:root.dark .badge-muted { background: rgba(100, 116, 139, 0.15); }
 
-.status-loading {
-  background: var(--bg-elevated, #F9F9F8);
-  color: var(--text-tertiary, #9ca3af);
-}
+.status-body { display: flex; align-items: baseline; justify-content: space-between; }
 
-.status-body {
-  display: flex;
-  align-items: center;
-}
+.status-count { display: flex; align-items: baseline; gap: 4px; }
 
-.status-info {
-  width: 100%;
-}
-
-.status-count {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.count-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-primary, #1a1a1a);
+.count-num {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #1E293B;
   line-height: 1;
+  letter-spacing: -0.03em;
 }
 
-.count-label {
-  font-size: 0.8125rem;
-  color: var(--text-tertiary, #9ca3af);
-}
+:root.dark .count-num { color: #F1F5F9; }
+
+.count-unit { font-size: 0.8125rem; color: #94A3B8; }
 
 .status-hint {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 0.8125rem;
-  color: var(--text-secondary, #6b7280);
-  margin-top: 4px;
+  color: #94A3B8;
 }
 
-.status-hint svg {
-  flex-shrink: 0;
-  color: var(--text-tertiary, #9ca3af);
-}
-
-/* ---- Circular Check-in Button ---- */
-.checkin-action {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 32px;
-}
+/* Check-in Button */
+.checkin-action { text-align: center; }
 
 .checkin-btn {
-  width: 120px;
-  height: 120px;
+  width: 128px;
+  height: 128px;
   border-radius: 50%;
   border: none;
-  background: var(--accent, #2563EB);
-  color: #fff;
-  display: flex;
+  background: linear-gradient(135deg, #2563EB, #3B82F6);
+  color: white;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 0 8px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.15);
   transition: background 0.2s;
   outline: none;
 }
 
-.checkin-btn:hover {
-  background: var(--accent-hover, #1d4ed8);
+.checkin-btn:hover { background: linear-gradient(135deg, #1D4ED8, #2563EB); }
+.checkin-btn:active { transform: scale(0.97); }
+
+.checkin-done {
+  background: linear-gradient(135deg, #059669, #10B981);
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.15);
 }
 
-.checkin-btn:active {
-  transform: scale(0.96);
-}
+.checkin-done:hover { background: linear-gradient(135deg, #047857, #059669); }
 
-.checkin-btn-done {
-  background: var(--success, #059669);
-  box-shadow: 0 0 8px rgba(5, 150, 105, 0.1);
-}
-
-.checkin-btn-done:hover {
-  background: #047857;
-}
-
-.checkin-icon {
-  width: 32px;
-  height: 32px;
-}
-
-.checkin-label {
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
+.checkin-text { font-size: 1rem; font-weight: 700; letter-spacing: 0.02em; }
 
 .checkin-hint {
   margin-top: 12px;
   font-size: 0.8125rem;
-  color: var(--text-tertiary, #9ca3af);
+  color: #94A3B8;
 }
 
-/* ---- Quick Actions ---- */
+/* Section title */
 .section-title {
   font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
+  font-weight: 700;
+  color: #1E293B;
   margin: 0 0 12px;
 }
 
+:root.dark .section-title { color: #E2E8F0; }
+
+/* Actions grid */
 .actions-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -409,32 +315,31 @@ function goProfile() {
 }
 
 .action-card {
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border, #E5E5E3);
-  border-radius: var(--radius-md, 10px);
   padding: 20px 16px;
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
   text-align: left;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 6px;
+  border: none;
+  font-family: inherit;
   outline: none;
 }
 
 .action-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
-  border-color: var(--accent, #2563EB);
+}
+
+:root.dark .action-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .action-icon {
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-sm, 6px);
-  background: var(--accent-light, #EFF6FF);
-  color: var(--accent, #2563EB);
+  border-radius: 10px;
+  background: #EFF6FF;
+  color: #2563EB;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -442,39 +347,28 @@ function goProfile() {
 }
 
 .action-icon-ai {
-  background: #F0FDF4;
+  background: #ECFDF5;
   color: #059669;
 }
 
-.action-label {
+:root.dark .action-icon { background: rgba(37, 99, 235, 0.12); }
+:root.dark .action-icon-ai { background: rgba(5, 150, 105, 0.12); }
+
+.action-name {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: var(--text-primary, #1a1a1a);
+  color: #1E293B;
 }
+
+:root.dark .action-name { color: #E2E8F0; }
 
 .action-desc {
   font-size: 0.75rem;
-  color: var(--text-secondary, #6b7280);
+  color: #94A3B8;
 }
 
-/* ---- Responsive ---- */
 @media (max-width: 480px) {
-  .actions-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .checkin-btn {
-    width: 100px;
-    height: 100px;
-  }
-
-  .checkin-icon {
-    width: 28px;
-    height: 28px;
-  }
-
-  .checkin-label {
-    font-size: 0.875rem;
-  }
+  .actions-grid { grid-template-columns: 1fr; }
+  .checkin-btn { width: 108px; height: 108px; }
 }
 </style>
