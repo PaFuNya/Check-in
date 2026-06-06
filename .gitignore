@@ -27,3 +27,6 @@ Dockerfile.local
 
 # Local properties with secrets
 application-local.properties
+
+# Node.js
+frontend/node_modules/
