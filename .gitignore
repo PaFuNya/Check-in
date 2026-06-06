@@ -24,3 +24,6 @@ fix_task.md
 review_task.md
 architecture.html
 Dockerfile.local
+
+# Local properties with secrets
+application-local.properties
