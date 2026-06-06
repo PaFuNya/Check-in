@@ -9,8 +9,9 @@ public class PageController {
 
     @GetMapping("/")
     public String index(HttpSession session) {
+        // 检查登录状态 (AuthInterceptor 可能已完成自动登录)
         if (session.getAttribute("studentId") == null) {
-            return "redirect:/login";
+            return "redirect:/login.html";
         }
         return "index";
     }
@@ -23,7 +24,7 @@ public class PageController {
     @GetMapping("/checkin")
     public String checkin(HttpSession session) {
         if (session.getAttribute("studentId") == null) {
-            return "redirect:/login";
+            return "redirect:/login.html";
         }
         return "checkin";
     }
