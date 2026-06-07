@@ -177,10 +177,18 @@ onUnmounted(() => {
   max-width: 640px;
   margin: 0 auto;
   padding: 0 0 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .home-section {
   margin-bottom: 20px;
+}
+
+.home-section:last-child {
+  margin-top: auto;
+  margin-bottom: 0;
 }
 
 /* Greeting */
