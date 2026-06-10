@@ -38,6 +38,11 @@ const routes = [
         name: 'Profile',
         component: () => import('@/views/ProfileView.vue'),
       },
+      {
+        path: 'face-register',
+        name: 'FaceRegister',
+        component: () => import('@/views/FaceRegisterView.vue'),
+      },
     ]
   },
   {

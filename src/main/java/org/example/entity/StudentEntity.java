@@ -28,6 +28,12 @@ public class StudentEntity {
     @Comment("寝室号")
     private String roomNumber;
 
+    @Comment("班级")
+    private String className;
+
+    @Comment("手机号")
+    private String phoneNumber;
+
     @Comment("人脸图片URL")
     private String faceImageUrl;
 

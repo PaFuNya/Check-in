@@ -11,27 +11,35 @@ const authStore = useAuthStore()
 const checkedIn = ref(false)
 const checkInCount = ref(0)
 const statusLoading = ref(true)
+const statusError = ref(false)
+const showFaceBanner = ref(false)
 
 async function fetchStatus() {
   statusLoading.value = true
+  statusError.value = false
   try {
     const res = await axios.get('/api/checkin/status')
     if (res.data.code === 200) {
       checkedIn.value = res.data.data.checkedIn
       checkInCount.value = res.data.data.count
+    } else {
+      statusError.value = true
     }
-  } catch { /* silent */ } finally {
+  } catch {
+    statusError.value = true
+  } finally {
     statusLoading.value = false
   }
 }
 
 const statusText = computed(() => {
   if (statusLoading.value) return '加载中'
+  if (statusError.value) return '获取失败'
   return checkedIn.value ? '已签到' : '未签到'
 })
 
 const statusClass = computed(() => {
-  if (statusLoading.value) return 'badge-muted'
+  if (statusLoading.value || statusError.value) return 'badge-muted'
   return checkedIn.value ? 'badge-success' : 'badge-error'
 })
 
@@ -48,18 +56,25 @@ const greeting = computed(() => {
 
 const today = computed(() => {
   const d = new Date()
-  const weekday = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 星期${weekday}`
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 星期${weekdays[d.getDay()]}`
 })
 
 // GSAP breathe
 const btnRef = ref(null)
 let breatheTl = null
 
-onMounted(() => {
+onMounted(async () => {
   fetchStatus()
 
-  // Entrance
+  // 检查人脸注册状态
+  try {
+    const { data } = await axios.get('/api/auth/profile')
+    if (data.code === 200 && !data.data.faceRegistered && data.data.faceImageUrl !== 'registered') {
+      showFaceBanner.value = true
+    }
+  } catch { /* silent */ }
+
   gsap.from('.home-section', { y: 30, opacity: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out' })
 
   if (btnRef.value) {
@@ -92,6 +107,20 @@ onUnmounted(() => {
       <p class="greeting-date">{{ today }}</p>
     </section>
 
+    <!-- Face registration banner -->
+    <section v-if="showFaceBanner" class="home-section face-banner" @click="router.push('/face-register')">
+      <div class="face-banner-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </div>
+      <div class="face-banner-text">
+        <span class="face-banner-title">请先注册人脸</span>
+        <span class="face-banner-desc">注册后才能使用人脸签到功能</span>
+      </div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </section>
+
     <!-- Status Card -->
     <section class="home-section glass-card status-card">
       <div class="status-top">
@@ -99,16 +128,35 @@ onUnmounted(() => {
         <span class="status-badge" :class="statusClass">{{ statusText }}</span>
       </div>
       <div class="status-body">
-        <div class="status-count">
-          <span class="count-num">{{ statusLoading ? '--' : checkInCount }}</span>
-          <span class="count-unit">次</span>
-        </div>
-        <div class="status-hint">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-          </svg>
-          <span>{{ checkedIn ? '今日签到完成' : '记得及时签到' }}</span>
-        </div>
+        <!-- Skeleton loading -->
+        <template v-if="statusLoading">
+          <div class="status-count">
+            <span class="skeleton skeleton-num"></span>
+            <span class="count-unit">次</span>
+          </div>
+          <div class="skeleton skeleton-hint"></div>
+        </template>
+        <!-- Error state -->
+        <template v-else-if="statusError">
+          <div class="status-count">
+            <span class="count-num">--</span>
+            <span class="count-unit">次</span>
+          </div>
+          <button class="retry-link" @click="fetchStatus">重新获取</button>
+        </template>
+        <!-- Normal -->
+        <template v-else>
+          <div class="status-count">
+            <span class="count-num">{{ checkInCount }}</span>
+            <span class="count-unit">次</span>
+          </div>
+          <div class="status-hint">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+            </svg>
+            <span>{{ checkedIn ? '今日签到完成' : '记得及时签到' }}</span>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -195,18 +243,33 @@ onUnmounted(() => {
 .greeting-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #1E293B;
+  color: var(--color-text);
   margin: 0 0 2px;
   letter-spacing: -0.02em;
 }
 
-:root.dark .greeting-title { color: #F1F5F9; }
-
 .greeting-date {
-  color: #64748B;
-  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
   margin: 0;
 }
+
+/* Face registration banner */
+.face-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+  border: 1px solid rgba(37,99,235,0.15);
+  cursor: pointer; transition: all 0.2s;
+}
+.face-banner:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+:root.dark .face-banner { background: linear-gradient(135deg, rgba(37,99,235,0.1), rgba(37,99,235,0.05)); border-color: rgba(37,99,235,0.2); }
+.face-banner-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(37,99,235,0.1); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.face-banner-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.face-banner-title { font-size: 0.875rem; font-weight: 600; color: #1E40AF; }
+:root.dark .face-banner-title { color: #60A5FA; }
+.face-banner-desc { font-size: 0.75rem; color: #3B82F6; }
+.face-banner svg:last-child { color: #3B82F6; flex-shrink: 0; }
 
 /* Status Card */
 .status-card {
@@ -222,7 +285,7 @@ onUnmounted(() => {
 
 .status-label {
   font-size: 0.8125rem;
-  color: #64748B;
+  color: var(--color-text-muted);
   font-weight: 500;
 }
 
@@ -230,18 +293,15 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 3px 12px;
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
-.badge-success { background: #ECFDF5; color: #059669; }
-.badge-error { background: #FEF2F2; color: #DC2626; }
-.badge-muted { background: #F1F5F9; color: #94A3B8; }
-
-:root.dark .badge-success { background: rgba(5, 150, 105, 0.15); }
-:root.dark .badge-error { background: rgba(220, 38, 38, 0.15); }
-:root.dark .badge-muted { background: rgba(100, 116, 139, 0.15); }
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-error { background: var(--color-error-light); color: var(--color-error); }
+.badge-muted { background: #F1F5F9; color: var(--color-text-light); }
+.dark .badge-muted { background: rgba(100, 116, 139, 0.15); }
 
 .status-body { display: flex; align-items: baseline; justify-content: space-between; }
 
@@ -250,21 +310,60 @@ onUnmounted(() => {
 .count-num {
   font-size: 2.25rem;
   font-weight: 800;
-  color: #1E293B;
+  color: var(--color-text);
   line-height: 1;
   letter-spacing: -0.03em;
 }
 
-:root.dark .count-num { color: #F1F5F9; }
-
-.count-unit { font-size: 0.8125rem; color: #94A3B8; }
+.count-unit { font-size: 0.8125rem; color: var(--color-text-light); }
 
 .status-hint {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 0.8125rem;
-  color: #94A3B8;
+  color: var(--color-text-light);
+}
+
+.retry-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.retry-link:hover {
+  text-decoration: underline;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+.dark .skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
+}
+
+.skeleton-num {
+  width: 60px;
+  height: 36px;
+}
+
+.skeleton-hint {
+  width: 120px;
+  height: 16px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Check-in Button */
@@ -291,29 +390,27 @@ onUnmounted(() => {
 .checkin-btn:active { transform: scale(0.97); }
 
 .checkin-done {
-  background: linear-gradient(135deg, #059669, #10B981);
+  background: linear-gradient(135deg, var(--color-success), #10B981);
   box-shadow: 0 0 8px rgba(5, 150, 105, 0.15);
 }
 
-.checkin-done:hover { background: linear-gradient(135deg, #047857, #059669); }
+.checkin-done:hover { background: linear-gradient(135deg, #047857, var(--color-success)); }
 
 .checkin-text { font-size: 1rem; font-weight: 700; letter-spacing: 0.02em; }
 
 .checkin-hint {
   margin-top: 12px;
   font-size: 0.8125rem;
-  color: #94A3B8;
+  color: var(--color-text-light);
 }
 
 /* Section title */
 .section-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #1E293B;
+  color: var(--color-text);
   margin: 0 0 12px;
 }
-
-:root.dark .section-title { color: #E2E8F0; }
 
 /* Actions grid */
 .actions-grid {
@@ -338,7 +435,7 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
-:root.dark .action-card:hover {
+.dark .action-card:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -346,8 +443,8 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: #EFF6FF;
-  color: #2563EB;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -355,24 +452,19 @@ onUnmounted(() => {
 }
 
 .action-icon-ai {
-  background: #ECFDF5;
-  color: #059669;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
-
-:root.dark .action-icon { background: rgba(37, 99, 235, 0.12); }
-:root.dark .action-icon-ai { background: rgba(5, 150, 105, 0.12); }
 
 .action-name {
   font-size: 0.9375rem;
   font-weight: 600;
-  color: #1E293B;
+  color: var(--color-text);
 }
-
-:root.dark .action-name { color: #E2E8F0; }
 
 .action-desc {
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: var(--color-text-light);
 }
 
 @media (max-width: 480px) {

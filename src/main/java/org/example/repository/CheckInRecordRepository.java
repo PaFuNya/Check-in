@@ -17,4 +17,9 @@ public interface CheckInRecordRepository extends JpaRepository<CheckInRecordEnti
     List<CheckInRecordEntity> findByCheckTimeBetween(Date start, Date end);
 
     List<CheckInRecordEntity> findByStudentIdAndCheckTimeAfter(String studentId, Date after);
+
+    /**
+     * 统计某个学生在指定时间段内的签到次数（用于每日签到限制）
+     */
+    long countByStudentIdAndCheckTimeBetween(String studentId, Date start, Date end);
 }

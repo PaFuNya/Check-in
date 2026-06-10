@@ -19,12 +19,22 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/auth/login",
                         "/auth/logout",
+                        "/auth/check",
+                        "/api/auth/login",
+                        "/api/auth/logout",
+                        "/api/auth/check",
                         "/login",
+                        "/login.html",
+                        "/static/**",
+                        "/assets/**",
                         "/css/**",
                         "/js/**",
                         "/images/**",
-                        "/static/**",
-                        "/favicon.ico"
+                        "/favicon.ico",
+                        "/favicon.svg",
+                        "/icons.svg",
+                        "/error",
+                        "/index.html"
                 );
     }
 }

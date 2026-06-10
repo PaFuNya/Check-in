@@ -15,7 +15,7 @@
 ## 数据库
 - MySQL 容器: `1Panel-mysql-RIP6` (WSL Docker)
 - 数据库名: `checkin_db`
-- 密码: `pafunya@520wuerwu`
+- 密码: 通过环境变量 `SPRING_DATASOURCE_PASSWORD` 注入
 
 ### 表结构
 1. **chat_history** - 聊天记录 (id, session_id, student_id, role, content)

@@ -2,6 +2,7 @@ package org.example.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.config.ApiKeyConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,6 @@ public class BaiduFaceService {
 
     private static final Logger log = LoggerFactory.getLogger(BaiduFaceService.class);
 
-    private static final String API_KEY = "pBlZfNVlhwgMAikW0WmgktM9";
-    private static final String SECRET_KEY = "bZhL8Y8SuVpvuEpswES2sclkExF48iiT";
     private static final String TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token";
     private static final String FACE_DETECT_URL = "https://aip.baidubce.com/rest/2.0/face/v3/detect";
     private static final String FACE_ADD_URL = "https://aip.baidubce.com/rest/2.0/face/v3/faceset/user/add";
@@ -33,6 +32,8 @@ public class BaiduFaceService {
     private static final String FACE_VERIFY_URL = "https://aip.baidubce.com/rest/2.0/face/v3/faceverify";
 
     public static final String GROUP_ID = "campus_checkin";
+
+    private final ApiKeyConfig apiKeyConfig;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -42,6 +43,10 @@ public class BaiduFaceService {
     private String accessToken;
     private long tokenExpireTime = 0;
 
+    public BaiduFaceService(ApiKeyConfig apiKeyConfig) {
+        this.apiKeyConfig = apiKeyConfig;
+    }
+
     /**
      * 获取百度AI的access_token
      */
@@ -49,7 +54,7 @@ public class BaiduFaceService {
         if (accessToken != null && System.currentTimeMillis() < tokenExpireTime) {
             return accessToken;
         }
-        String url = TOKEN_URL + "?grant_type=client_credentials&client_id=" + API_KEY + "&client_secret=" + SECRET_KEY;
+        String url = TOKEN_URL + "?grant_type=client_credentials&client_id=" + apiKeyConfig.getBaidu().getApiKey() + "&client_secret=" + apiKeyConfig.getBaidu().getSecretKey();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .POST(HttpRequest.BodyPublishers.noBody())

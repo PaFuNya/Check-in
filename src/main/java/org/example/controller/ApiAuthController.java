@@ -111,16 +111,21 @@ public class ApiAuthController {
             return ApiResponse.error(401, "未登录");
         }
 
+        String studentName = (String) body.getOrDefault("studentName", "");
         String className = (String) body.getOrDefault("className", "");
         String phoneNumber = (String) body.getOrDefault("phoneNumber", "");
-        String avatarUrl = (String) body.getOrDefault("avatarUrl", "");
+        String dormBuilding = (String) body.getOrDefault("dormBuilding", "");
+        String roomNumber = (String) body.getOrDefault("roomNumber", "");
 
-        Map<String, Object> result = authService.updateProfile(studentId, className, phoneNumber, avatarUrl);
+        Map<String, Object> result = authService.updateProfile(studentId, studentName, className,
+                phoneNumber, dormBuilding, roomNumber);
         if (Boolean.TRUE.equals(result.get("success"))) {
             // 更新 session 中的属性
             if (body.containsKey("className")) session.setAttribute("className", className);
             if (body.containsKey("phoneNumber")) session.setAttribute("phoneNumber", phoneNumber);
-            if (body.containsKey("avatarUrl")) session.setAttribute("avatarUrl", avatarUrl);
+            if (body.containsKey("studentName")) session.setAttribute("studentName", studentName);
+            if (body.containsKey("dormBuilding")) session.setAttribute("dormBuilding", dormBuilding);
+            if (body.containsKey("roomNumber")) session.setAttribute("roomNumber", roomNumber);
             return ApiResponse.ok();
         } else {
             return ApiResponse.error(500, (String) result.getOrDefault("message", "更新失败"));

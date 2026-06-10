@@ -6,14 +6,16 @@
 /root/bighomework/src/main/java/org/example/aiservice/CheckInAssistant.java
 /root/bighomework/src/main/java/org/example/aiservice/LeaveRequestAssistant.java
 /root/bighomework/src/main/java/org/example/aiservice/QueryCheckInAssistant.java
+/root/bighomework/src/main/java/org/example/aiservice/SimpleChatAssistant.java
 /root/bighomework/src/main/java/org/example/aop/ChatFlow.java
 /root/bighomework/src/main/java/org/example/aop/ChatFlowAop.java
 /root/bighomework/src/main/java/org/example/bean/ChatHistory.java
 /root/bighomework/src/main/java/org/example/common/ApiResponse.java
+/root/bighomework/src/main/java/org/example/config/ApiKeyConfig.java
 /root/bighomework/src/main/java/org/example/config/ChatMemoryConfig.java
 /root/bighomework/src/main/java/org/example/config/CorsConfig.java
 /root/bighomework/src/main/java/org/example/config/RagConfig.java
-/root/bighomework/src/main/java/org/example/config/WebConfig.java
+/root/bighomework/src/main/java/org/example/config/RagStartupLoader.java
 /root/bighomework/src/main/java/org/example/config/WebMvcConfig.java
 /root/bighomework/src/main/java/org/example/controller/AiController.java
 /root/bighomework/src/main/java/org/example/controller/ApiAiController.java
@@ -30,6 +32,9 @@
 /root/bighomework/src/main/java/org/example/entity/LeaveRequestEntity.java
 /root/bighomework/src/main/java/org/example/entity/RememberTokenEntity.java
 /root/bighomework/src/main/java/org/example/entity/StudentEntity.java
+/root/bighomework/src/main/java/org/example/enums/AuditStatus.java
+/root/bighomework/src/main/java/org/example/enums/ChatRole.java
+/root/bighomework/src/main/java/org/example/enums/CheckInStatus.java
 /root/bighomework/src/main/java/org/example/interceptor/AuthInterceptor.java
 /root/bighomework/src/main/java/org/example/repository/BaseRepository.java
 /root/bighomework/src/main/java/org/example/repository/ChatHistoryRepository.java
