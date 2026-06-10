@@ -1,104 +1,112 @@
 # 校园寝室自助签到系统
 
-基于 Spring Boot + LangChain4j + Thymeleaf 的校园寝室自助签到系统。
+基于 Spring Boot + LangChain4j + Vue 3 的校园寝室自助签到 AI 助手。学生通过自然语言对话完成寝室签到、请假报备、考勤查询等操作。
 
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
-| 后端 | Spring Boot 3.4.4, Java 17, LangChain4j, JPA/Hibernate, MySQL |
-| 前端 | Thymeleaf, CSS (Glassmorphism), 原生 JavaScript |
-| AI | DeepSeek API (对话), 百度AI (人脸识别+活体检测) |
-| 地图 | 百度地图 API (GPS定位) |
-| 部署 | Maven, nohup JAR, 1Panel 反向代理 |
+| 后端 | Spring Boot 3.4.4, Java 17, LangChain4j 1.0.1-beta6, Spring Data JPA, MySQL 8 |
+| 前端 | Vue 3 + Vite, Pinia, Vue Router, GSAP |
+| AI | DeepSeek API (对话), DashScope qwen-max (RAG embedding), 百度AI (人脸识别) |
+| 搜索 | 关键词 n-gram 匹配 + 组合加分算法 (学生手册 RAG) |
+| 部署 | Maven, JAR, Cloudflare Tunnel (*.kaminya.top) |
 
 ## 功能特性
 
-1. **学号密码登录** - 记住我30天免登录
-2. **GPS定位签到** - 校内500米范围内验证
-3. **人脸识别+活体检测** - 录视频5秒 + 抽帧 + 百度detect API
-4. **AI智能助手** - 意图识别：请假报备/状态查询/规则问答/个人信息
-5. **个人信息设置** - 班级/手机号/头像上传
-6. **三模式主题切换** - 浅色/深色/跟随系统
-7. **签到记录查询**
+1. **学号密码登录** - Session + Remember Token 双重认证，30天免登录
+2. **人脸注册** - 摄像头拍照 → 百度AI 人脸注册
+3. **AI 智能助手** - SSE 流式对话，意图识别路由：
+   - 🏠 请假报备（多轮对话采集信息 → 数据库入库）
+   - 📊 状态查询（签到记录、请假状态）
+   - 📖 规则问答（RAG 检索学生手册，精确到页码）
+   - 👤 个人信息查询
+4. **聊天记录持久化** - 按用户隔离，支持清空
+5. **深色/浅色主题** - 跟随系统或手动切换
 
 ## 项目结构
 
 ```
 src/main/java/org/example/
-├── Application.java          # 启动类
-├── config/                   # 配置 (WebMvc, ChatMemory, Rag)
-├── controller/               # 控制器 (Auth, Ai, CheckIn, Face, Page)
-├── entity/                   # 实体 (Student, CheckInRecord, LeaveRequest, ChatHistory)
-├── repository/               # JPA Repository
-├── service/                  # 服务层 (Auth, AiChat, FaceRecognition, Location)
-├── service/impl/             # 服务实现
-├── aiservice/                # LangChain4j AI Service 接口
-├── aioutput/                 # AI 输出 DTO
-├── aop/                      # AOP 切面 (ChatFlow)
-├── tools/                    # AI Tools (ChatHistory, CheckInRecord, LeaveRequest)
-├── interceptor/              # 拦截器 (AuthInterceptor)
-└── vo/                       # 视图对象
+├── Application.java              # 启动类
+├── common/ApiResponse.java       # 统一响应封装
+├── config/                       # 配置类
+│   ├── ApiKeyConfig.java         # API密钥配置化
+│   ├── RagConfig.java            # RAG 向量存储配置
+│   ├── RagStartupLoader.java     # 启动时加载手册文本
+│   └── WebMvcConfig.java         # MVC + 拦截器配置
+├── controller/                   # REST 控制器
+│   ├── ApiAuthController.java    # /api/auth/* 认证
+│   ├── ApiAiController.java      # /api/ai/* AI对话 + 聊天记录
+│   ├── ApiCheckInController.java # /api/checkin/* 签到
+│   └── PageController.java       # SPA 路由回退
+├── entity/                       # JPA 实体
+├── repository/                   # Spring Data Repository
+├── service/impl/                 # 业务实现
+│   ├── AiChatServiceImpl.java    # AI对话 + RAG搜索核心
+│   └── AuthServiceImpl.java      # 认证 + 登出
+├── aiservice/                    # LangChain4j AI Service 接口
+├── aop/ChatFlowAop.java          # 聊天记录 AOP 切面
+├── interceptor/AuthInterceptor.java # 认证拦截器
+└── enums/                        # 枚举 (ChatRole, CheckInStatus, AuditStatus)
 
-src/main/resources/
-├── templates/                # Thymeleaf 模板 (login, index, checkin)
-├── getIntention.txt          # AI意图识别提示词
-├── checkin.txt               # 签到提示词
-├── leaveRequest.txt          # 请假提示词
-└── application.properties    # 配置文件
+frontend/src/
+├── stores/auth.js                # Pinia 认证状态管理
+├── router/index.js               # Vue Router + 认证守卫
+├── layouts/DefaultLayout.vue     # 导航栏 + 底部Tab
+└── views/
+    ├── Login.vue                 # 登录页
+    ├── HomeView.vue              # 首页仪表板
+    ├── ChatView.vue              # AI对话 (SSE流式)
+    ├── CheckInView.vue           # 签到页
+    ├── ProfileView.vue           # 个人中心
+    ├── RecordsView.vue           # 签到记录
+    └── FaceRegisterView.vue      # 人脸注册
+
+data/
+├── student_handbook.pdf          # 学生手册原文
+├── handbook_tagged.txt           # 手册文本 (带 [p页码] 标记)
+└── handbook_text.txt             # 手册纯文本
 ```
 
-## 快速启动
+## 快速开始
 
 ```bash
-# 编译
+# 后端
+cd /root/bighomework
 mvn clean package -DskipTests
+java -jar target/campus-checkin-assistant-1.0-SNAPSHOT.jar --spring.profiles.active=local
 
-# 运行
-java -jar target/campus-checkin-assistant-1.0-SNAPSHOT.jar --server.port=8088
+# 前端开发
+cd frontend
+npm install
+npm run dev
 
-# 访问
-http://localhost:8088/login
+# 前端构建部署
+npm run build
+cp -r dist/* ../src/main/resources/static/
+mvn package -DskipTests
 ```
 
-## 测试账号
+## 环境变量
 
-| 学号 | 密码 | 姓名 |
-|------|------|------|
-| 2024001 | 123456 | 张三 |
-| 2024002 | 123456 | 李四 |
+| 变量 | 说明 |
+|------|------|
+| `SPRING_DATASOURCE_PASSWORD` | MySQL 密码 |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key |
+| `DASHSCOPE_API_KEY` | DashScope (阿里云) API Key |
+| `BAIDU_API_KEY` / `BAIDU_SECRET_KEY` | 百度AI 人脸识别 |
 
-## 架构设计
+## RAG 搜索算法
 
-采用 LangChain4j AiService 架构，与老师参考项目对齐：
+学生手册问答采用关键词 n-gram 匹配 + 组合加分：
 
-- 单次AI调用完成意图识别 + 回复生成
-- @SystemMessage 加载提示词模板
-- 模板变量注入用户信息 (studentId, studentName)
-- 5类意图：请假报备、状态查询、规则问答、个人信息、其他
-- @Tool 注解实现 AI 调用后端服务
+1. 从用户问题中提取关键词（去虚词后 ≥2字的片段）
+2. 逐行匹配手册文本，按 `count × len²` 计分
+3. **组合加分**：同时命中多个关键词的行获得 `score × matched²` 指数级加成
+4. 按分数降序取 Top 5，合并同页内容
+5. 将上下文交给 AI 生成正式回答（要求引用页码）
 
-### 与老师参考项目的对应关系
+## 许可证
 
-| 老师参考 (失物招领) | 本项目 (寝室签到) |
-|----------------------|-------------------|
-| 失物登记 | 签到登记 |
-| 失物查询 | 签到记录查询 |
-| 拾获登记 | 请假报备 |
-| 意图识别(4类) | 意图识别(5类) |
-| 用户ID设置 | 学号登录+个人信息 |
-
-## 页面展示
-
-### 登录页
-支持学号密码登录，记住我30天免登录，三模式主题切换。
-
-### 主页
-圆形签到按钮(呼吸光晕动画)，AI助手对话，签到记录查询，个人信息设置(头像上传)。
-
-### 签到页
-GPS自动定位验证，人脸识别(录视频5秒+活体检测)，签到结果反馈。
-
-## 开发团队
-
-WhiteEmpties - 浙江国际海运职业技术学院 大数据技术专业
+MIT License
