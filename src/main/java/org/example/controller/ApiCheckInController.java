@@ -9,6 +9,7 @@ import org.example.repository.StudentRepository;
 import org.example.service.FaceRecognitionService;
 import org.example.service.LocationVerificationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.example.enums.CheckInStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -84,7 +85,16 @@ public class ApiCheckInController {
             return ApiResponse.error(401, "未登录");
         }
 
-        // Redis 签到防重检查
+        // 双重防重检查: 数据库 + Redis
+        LocalDate today = LocalDate.now();
+        Date todayStart = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date todayEnd = Date.from(today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        long todayCount = checkInRecordRepository.countByStudentIdAndCheckTimeBetween(studentId, todayStart, todayEnd);
+        if (todayCount > 0) {
+            return ApiResponse.error(400, "今日已签到，请勿重复签到");
+        }
+
+        // Redis 快速路径
         String todayKey = "checkin:today:" + studentId + ":" + new SimpleDateFormat("yyyyMMdd").format(new Date());
         if (Boolean.TRUE.equals(redisTemplate.hasKey(todayKey))) {
             return ApiResponse.error(400, "今日已签到，请勿重复签到");
@@ -136,7 +146,7 @@ public class ApiCheckInController {
             record.setStudentName(student.getStudentName());
             record.setRoomNumber(student.getRoomNumber());
             record.setDormBuilding(student.getDormBuilding());
-            record.setStatus("已签到");
+            record.setStatus(CheckInStatus.CHECKED_IN.getCode());
             record.setLocationInfo(latitude + "," + longitude);
             record.setCheckTime(new Date());
             checkInRecordRepository.save(record);

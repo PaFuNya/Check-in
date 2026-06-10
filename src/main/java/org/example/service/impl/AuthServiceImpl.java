@@ -57,6 +57,9 @@ public class AuthServiceImpl implements AuthService {
         // 登录成功: 设置 session
         session.setAttribute("studentId", student.getStudentId());
         session.setAttribute("studentName", student.getStudentName());
+        session.setAttribute("dormBuilding", student.getDormBuilding());
+        session.setAttribute("roomNumber", student.getRoomNumber());
+        session.setAttribute("faceRegistered", "registered".equals(student.getFaceImageUrl()));
 
         // 如果 rememberMe, 生成 token 并设置 cookie
         if (rememberMe) {
@@ -78,6 +81,10 @@ public class AuthServiceImpl implements AuthService {
         result.put("success", true);
         result.put("message", "登录成功");
         result.put("studentId", studentId);
+        result.put("studentName", student.getStudentName());
+        result.put("dormBuilding", student.getDormBuilding());
+        result.put("roomNumber", student.getRoomNumber());
+        result.put("faceRegistered", "registered".equals(student.getFaceImageUrl()));
         return result;
     }
 
@@ -89,11 +96,18 @@ public class AuthServiceImpl implements AuthService {
         }
         session.invalidate();
 
-        // 清除 cookie
+        // 清除 remember_token cookie
         Cookie cookie = new Cookie("remember_token", "");
         cookie.setMaxAge(0);
         cookie.setPath("/");
+        cookie.setHttpOnly(true);
         response.addCookie(cookie);
+
+        // 清除 JSESSIONID cookie（确保 session 彻底失效）
+        Cookie sessionCookie = new Cookie("JSESSIONID", "");
+        sessionCookie.setMaxAge(0);
+        sessionCookie.setPath("/");
+        response.addCookie(sessionCookie);
     }
 
     @Override
@@ -110,6 +124,9 @@ public class AuthServiceImpl implements AuthService {
             result.put("loggedIn", true);
             result.put("studentId", studentId);
             result.put("studentName", studentName);
+            result.put("dormBuilding", session.getAttribute("dormBuilding"));
+            result.put("roomNumber", session.getAttribute("roomNumber"));
+            result.put("faceRegistered", session.getAttribute("faceRegistered"));
         }
         return result;
     }
@@ -142,12 +159,15 @@ public class AuthServiceImpl implements AuthService {
             profile.put("dormBuilding", student.getDormBuilding());
             profile.put("roomNumber", student.getRoomNumber());
             profile.put("faceImageUrl", student.getFaceImageUrl());
+            profile.put("className", student.getClassName());
+            profile.put("phoneNumber", student.getPhoneNumber());
             return profile;
         }).orElse(null);
     }
 
     @Override
-    public Map<String, Object> updateProfile(String studentId, String className, String phoneNumber, String avatarUrl) {
+    public Map<String, Object> updateProfile(String studentId, String studentName, String className,
+                                              String phoneNumber, String dormBuilding, String roomNumber) {
         Map<String, Object> result = new HashMap<>();
         var optional = studentRepository.findById(studentId);
         if (optional.isEmpty()) {
@@ -156,8 +176,20 @@ public class AuthServiceImpl implements AuthService {
             return result;
         }
         StudentEntity student = optional.get();
-        if (avatarUrl != null && !avatarUrl.isBlank()) {
-            student.setFaceImageUrl(avatarUrl);
+        if (studentName != null && !studentName.isBlank()) {
+            student.setStudentName(studentName);
+        }
+        if (className != null) {
+            student.setClassName(className);
+        }
+        if (phoneNumber != null) {
+            student.setPhoneNumber(phoneNumber);
+        }
+        if (dormBuilding != null) {
+            student.setDormBuilding(dormBuilding);
+        }
+        if (roomNumber != null) {
+            student.setRoomNumber(roomNumber);
         }
         studentRepository.save(student);
         result.put("success", true);

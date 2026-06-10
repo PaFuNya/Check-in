@@ -2,6 +2,7 @@ package org.example.controller;
 
 import jakarta.servlet.http.HttpSession;
 import org.example.entity.CheckInRecordEntity;
+import org.example.enums.CheckInStatus;
 import org.example.entity.StudentEntity;
 import org.example.repository.CheckInRecordRepository;
 import org.example.repository.StudentRepository;
@@ -90,7 +91,7 @@ public class CheckInController {
             record.setStudentName(student.getStudentName());
             record.setRoomNumber(student.getRoomNumber());
             record.setDormBuilding(student.getDormBuilding());
-            record.setStatus("已签到");
+            record.setStatus(CheckInStatus.CHECKED_IN.getCode());
             record.setLocationInfo(latitude + "," + longitude);
             record.setCheckTime(new Date());
             checkInRecordRepository.save(record);

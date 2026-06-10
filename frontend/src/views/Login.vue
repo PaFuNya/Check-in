@@ -1,43 +1,41 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import gsap from 'gsap'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
-const studentId = ref('')
-const password = ref('')
-const rememberMe = ref(false)
 const cardRef = ref(null)
-const formRef = ref(null)
+
+const form = reactive({
+  studentId: '',
+  password: '',
+  rememberMe: false,
+})
+
+const showPwd = ref(false)
 
 async function handleLogin() {
-  if (!studentId.value || !password.value) {
-    authStore.error = '请输入学号和密码'
-    return
-  }
-  const success = await authStore.login(studentId.value, password.value, rememberMe.value)
-  if (success) {
-    router.push({ name: 'Home' })
+  if (!form.studentId || !form.password) return
+  authStore.clearError()
+  const ok = await authStore.login(form.studentId, form.password, form.rememberMe)
+  if (ok) {
+    router.push('/')
   }
 }
 
 onMounted(() => {
-  // Restore saved studentId
   const saved = localStorage.getItem('rememberedStudentId')
   if (saved) {
-    studentId.value = saved
-    rememberMe.value = true
+    form.studentId = saved
+    form.rememberMe = true
   }
 
-  // GSAP entrance
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
-  tl.from(cardRef.value, { y: 60, opacity: 0, duration: 0.8 })
-  tl.from(formRef.value?.querySelectorAll('.form-field, .form-check, .error-msg, .login-btn'), {
-    y: 24, opacity: 0, duration: 0.45, stagger: 0.08
-  }, '-=0.3')
+  if (cardRef.value) {
+    gsap.from(cardRef.value, { y: 60, opacity: 0, duration: 0.8, ease: 'power3.out' })
+    gsap.from('.form-field', { y: 20, opacity: 0, duration: 0.45, stagger: 0.1, delay: 0.3, ease: 'power2.out' })
+  }
 })
 </script>
 
@@ -48,87 +46,92 @@ onMounted(() => {
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
 
-    <div ref="cardRef" class="login-card glass-card">
-      <!-- Header -->
+    <div class="login-card glass-card" ref="cardRef">
       <div class="login-header">
         <div class="login-logo">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
           </svg>
         </div>
         <h1 class="login-title">校园寝室签到</h1>
         <p class="login-subtitle">使用学号和密码登录系统</p>
       </div>
 
-      <!-- Form -->
-      <form ref="formRef" @submit.prevent="handleLogin" class="login-form">
-        <!-- Student ID -->
+      <form class="login-form" @submit.prevent="handleLogin">
         <div class="form-field">
-          <label for="studentId" class="field-label">学号</label>
+          <label class="field-label">学号</label>
           <div class="input-wrapper">
             <span class="input-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
               </svg>
             </span>
             <input
-              id="studentId"
-              v-model="studentId"
+              v-model="form.studentId"
               type="text"
               class="field-input"
               placeholder="请输入学号"
+              required
+              autofocus
               autocomplete="username"
             />
           </div>
         </div>
 
-        <!-- Password -->
         <div class="form-field">
-          <label for="password" class="field-label">密码</label>
+          <label class="field-label">密码</label>
           <div class="input-wrapper">
             <span class="input-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </span>
             <input
-              id="password"
-              v-model="password"
-              type="password"
+              v-model="form.password"
+              :type="showPwd ? 'text' : 'password'"
               class="field-input"
               placeholder="请输入密码"
+              required
               autocomplete="current-password"
+              @keydown.enter="handleLogin"
             />
+            <button type="button" class="pwd-toggle" @click="showPwd = !showPwd" tabindex="-1">
+              <svg v-if="!showPwd" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <!-- Remember me + error -->
         <div class="form-meta">
           <label class="form-check">
-            <input v-model="rememberMe" type="checkbox" class="check-input" />
-            <span class="check-box"></span>
+            <input type="checkbox" v-model="form.rememberMe" />
+            <span class="check-box">
+              <svg v-if="form.rememberMe" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
             <span class="check-label">记住我</span>
           </label>
         </div>
 
-        <!-- Error -->
         <div v-if="authStore.error" class="error-msg">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="15" y1="9" x2="9" y2="15" />
-            <line x1="9" y1="9" x2="15" y2="15" />
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           <span>{{ authStore.error }}</span>
         </div>
 
-        <!-- Submit -->
         <button type="submit" class="login-btn" :disabled="authStore.loading">
-          <span v-if="authStore.loading" class="spinner"></span>
+          <template v-if="authStore.loading">
+            <span class="spinner"></span>
+            <span>登录中...</span>
+          </template>
           <span v-else>登录</span>
-          <span v-if="authStore.loading">登录中...</span>
         </button>
       </form>
     </div>
@@ -137,89 +140,84 @@ onMounted(() => {
 
 <style scoped>
 .login-page {
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
   background: linear-gradient(135deg, #EFF6FF 0%, #E0E7FF 50%, #F0FDFA 100%);
+  padding: 24px;
   position: relative;
   overflow: hidden;
-  padding: 24px;
 }
-
-:root.dark .login-page {
+.dark .login-page {
   background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%);
 }
 
-/* Orbs */
+/* Decorative orbs */
 .orb {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
   opacity: 0.4;
   pointer-events: none;
-  animation: orbFloat 10s ease-in-out infinite;
 }
-.orb-1 { width: 400px; height: 400px; background: #818CF8; top: -100px; left: -100px; }
-.orb-2 { width: 300px; height: 300px; background: #38BDF8; bottom: -60px; right: -60px; animation-delay: -3s; }
-.orb-3 { width: 250px; height: 250px; background: #34D399; top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: -5s; opacity: 0.2; }
+.orb-1 { width: 300px; height: 300px; background: #818CF8; top: -80px; left: -60px; animation: float 8s ease-in-out infinite; }
+.orb-2 { width: 250px; height: 250px; background: #38BDF8; top: 40%; right: -80px; animation: float 10s ease-in-out infinite 1s; }
+.orb-3 { width: 200px; height: 200px; background: #34D399; bottom: -40px; left: 30%; animation: float 9s ease-in-out infinite 2s; }
+.dark .orb { opacity: 0.25; }
 
-@keyframes orbFloat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(20px, -20px) scale(1.04); }
-  66% { transform: translate(-15px, 15px) scale(0.96); }
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
 }
 
-/* Card */
 .login-card {
   width: 100%;
   max-width: 420px;
   padding: 40px 36px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   position: relative;
   z-index: 1;
-  border-radius: 20px;
+}
+.dark .login-card {
+  background: rgba(30,41,59,0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
 }
 
-:root.dark .login-card {
-  background: rgba(15, 23, 42, 0.6);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Header */
 .login-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
-
 .login-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 64px;
   height: 64px;
   border-radius: 16px;
   background: linear-gradient(135deg, #2563EB, #3B82F6);
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.3);
 }
-
 .login-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: #1E293B;
-  margin: 0 0 4px;
+  color: var(--color-text);
+  margin: 0 0 6px;
   letter-spacing: -0.02em;
 }
-
-:root.dark .login-title { color: #F1F5F9; }
-
 .login-subtitle {
-  color: #64748B;
   font-size: 0.875rem;
+  color: var(--color-text-light);
   margin: 0;
 }
 
-/* Form */
 .login-form {
   display: flex;
   flex-direction: column;
@@ -231,195 +229,128 @@ onMounted(() => {
   flex-direction: column;
   gap: 6px;
 }
-
 .field-label {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--color-text-muted);
 }
-
-:root.dark .field-label { color: #CBD5E1; }
-
 .input-wrapper {
   position: relative;
-  display: flex;
-  align-items: center;
 }
-
 .input-icon {
   position: absolute;
   left: 14px;
-  color: #94A3B8;
-  pointer-events: none;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-light);
   display: flex;
-  align-items: center;
+  pointer-events: none;
 }
 
-.field-input {
-  width: 100%;
-  padding: 12px 14px 12px 44px;
-  border: 1.5px solid #E2E8F0;
-  border-radius: 12px;
-  font-size: 0.9375rem;
-  background: #F8FAFC;
-  color: #1E293B;
-  transition: all 0.2s;
-  outline: none;
-  min-height: 44px;
-  font-family: inherit;
+.pwd-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-light);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
 }
 
-:root.dark .field-input {
-  background: rgba(30, 41, 59, 0.5);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #E2E8F0;
-}
-
-.field-input:focus {
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-  background: white;
-}
-
-:root.dark .field-input:focus {
-  background: rgba(30, 41, 59, 0.8);
-}
-
-.field-input::placeholder {
-  color: #94A3B8;
-}
-
-/* Checkbox */
 .form-meta {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: flex-start;
 }
-
 .form-check {
   display: flex;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
-  user-select: none;
   min-height: 44px;
+  cursor: pointer;
 }
-
-.check-input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
+.form-check input[type="checkbox"] {
+  display: none;
 }
-
 .check-box {
   width: 18px;
   height: 18px;
-  border: 1.5px solid #CBD5E1;
+  border: 1.5px solid var(--color-border);
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
-  position: relative;
 }
-
-:root.dark .check-box { border-color: #475569; }
-
-.check-input:checked + .check-box {
-  background: #2563EB;
-  border-color: #2563EB;
+.form-check input:checked + .check-box {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
-
-.check-input:checked + .check-box::after {
-  content: '';
-  width: 10px;
-  height: 6px;
-  border: 2px solid white;
-  border-top: none;
-  border-right: none;
-  transform: rotate(-45deg);
-  position: absolute;
-  top: 2px;
-}
-
-.check-input:focus-visible + .check-box {
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
 .check-label {
   font-size: 0.8125rem;
-  color: #64748B;
+  color: var(--color-text-light);
 }
 
-:root.dark .check-label { color: #94A3B8; }
-
-/* Error */
 .error-msg {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #DC2626;
-  font-size: 0.8125rem;
   padding: 10px 14px;
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
+  background: var(--color-error-light);
+  color: var(--color-error);
   border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
-:root.dark .error-msg {
-  background: rgba(220, 38, 38, 0.1);
-  border-color: rgba(220, 38, 38, 0.2);
-}
-
-/* Submit */
 .login-btn {
-  display: flex;
+  width: 100%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
-  padding: 12px;
+  padding: 12px 24px;
   min-height: 48px;
   background: linear-gradient(135deg, #2563EB, #3B82F6);
-  color: white;
+  color: #FFFFFF;
   border: none;
   border-radius: 12px;
   font-size: 1rem;
   font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.3);
 }
-
 .login-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 6px 20px rgba(37,99,235,0.4);
 }
-
 .login-btn:active:not(:disabled) {
   transform: translateY(0);
 }
-
 .login-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255,255,255,0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 480px) {
-  .login-card { padding: 32px 24px; }
+  .login-card {
+    padding: 32px 24px;
+  }
 }
 </style>

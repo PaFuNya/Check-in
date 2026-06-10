@@ -56,5 +56,6 @@ public interface AuthService {
      * @param avatarUrl 头像URL
      * @return Map {success: boolean, message: String}
      */
-    Map<String, Object> updateProfile(String studentId, String className, String phoneNumber, String avatarUrl);
+    Map<String, Object> updateProfile(String studentId, String studentName, String className,
+                                      String phoneNumber, String dormBuilding, String roomNumber);
 }

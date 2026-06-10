@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import gsap from 'gsap'
@@ -14,6 +14,8 @@ const totalElements = ref(0)
 const loading = ref(true)
 const error = ref(null)
 
+let listTl = null
+
 async function fetchRecords(page = 0) {
   loading.value = true; error.value = null
   try {
@@ -23,7 +25,7 @@ async function fetchRecords(page = 0) {
       records.value = data.content || []
       totalPages.value = data.totalPages || 0
       totalElements.value = data.totalElements || 0
-      currentPage.value = data.currentPage ?? page
+      currentPage.value = data.number ?? page
       await nextTick()
       animateList()
     } else { error.value = res.data.message || '获取记录失败' }
@@ -35,9 +37,10 @@ function prevPage() { if (currentPage.value > 0) goToPage(currentPage.value - 1)
 function nextPage() { if (currentPage.value < totalPages.value - 1) goToPage(currentPage.value + 1) }
 
 function animateList() {
+  if (listTl) listTl.kill()
   const items = document.querySelectorAll('.record-item')
   if (!items.length) return
-  gsap.fromTo(items, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out', clearProps: 'transform' })
+  listTl = gsap.fromTo(items, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out', clearProps: 'transform' })
 }
 
 function formatDate(dateStr) {
@@ -48,17 +51,22 @@ function formatDate(dateStr) {
 }
 
 function statusLabel(s) {
-  const v = String(s || '').toLowerCase()
-  if (v === 'success' || v === 'verified' || v === '正常') return '正常'
+  const v = String(s || '').trim()
+  if (v === '已签到' || v === '正常') return v
+  if (v === 'success' || v === 'verified') return '正常'
   return '异常'
 }
 
 function isSuccess(s) {
-  const v = String(s || '').toLowerCase()
-  return v === 'success' || v === 'verified' || v === '正常'
+  const v = String(s || '').trim()
+  return v === '已签到' || v === '正常' || v === 'success' || v === 'verified'
 }
 
 onMounted(() => fetchRecords(0))
+
+onUnmounted(() => {
+  if (listTl) listTl.kill()
+})
 </script>
 
 <template>
@@ -124,7 +132,7 @@ onMounted(() => fetchRecords(0))
       </div>
 
       <!-- Pagination -->
-      <div class="pagination glass-card">
+      <div v-if="totalPages > 1" class="pagination glass-card">
         <button class="page-btn cursor-pointer" :disabled="currentPage <= 0" @click="prevPage">上一页</button>
         <span class="page-info">{{ currentPage + 1 }} / {{ totalPages }}</span>
         <button class="page-btn cursor-pointer" :disabled="currentPage >= totalPages - 1" @click="nextPage">下一页</button>
@@ -138,23 +146,20 @@ onMounted(() => fetchRecords(0))
 
 /* Header */
 .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-.page-title { font-size: 1.25rem; font-weight: 700; color: #1E293B; margin: 0; flex: 1; }
-:root.dark .page-title { color: #F1F5F9; }
-.total-tag { font-size: 0.75rem; color: #94A3B8; background: rgba(37, 99, 235, 0.08); padding: 3px 10px; border-radius: 9999px; }
-:root.dark .total-tag { background: rgba(37, 99, 235, 0.15); }
-.back-btn { display: flex; align-items: center; gap: 4px; padding: 8px 14px; border: 1px solid #E2E8F0; border-radius: 8px; background: rgba(255, 255, 255, 0.7); color: #64748B; font-size: 0.8125rem; font-weight: 500; transition: all 0.2s; min-height: 40px; font-family: inherit; }
-:root.dark .back-btn { background: rgba(30, 41, 59, 0.5); border-color: rgba(255, 255, 255, 0.08); color: #94A3B8; }
-.back-btn:hover { background: rgba(255, 255, 255, 0.9); color: #334155; }
+.page-title { font-size: 1.25rem; font-weight: 700; color: var(--color-text); margin: 0; flex: 1; }
+.total-tag { font-size: 0.75rem; color: var(--color-text-light); background: var(--color-primary-light); padding: 3px 10px; border-radius: var(--radius-full); }
+.back-btn { display: flex; align-items: center; gap: 4px; padding: 8px 14px; border: 1px solid var(--color-border); border-radius: 8px; background: rgba(255, 255, 255, 0.7); color: var(--color-text-muted); font-size: 0.8125rem; font-weight: 500; transition: all 0.2s; min-height: 40px; font-family: inherit; cursor: pointer; }
+.dark .back-btn { background: rgba(30, 41, 59, 0.5); border-color: rgba(255, 255, 255, 0.08); color: var(--color-text-light); }
+.back-btn:hover { background: rgba(255, 255, 255, 0.9); color: var(--color-text-muted); }
 
 /* States */
-.state-box { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 20px; color: #64748B; }
-.state-error { color: #DC2626; font-size: 0.9rem; }
-.state-title { font-size: 1rem; font-weight: 600; color: #1E293B; margin: 8px 0 0; }
-:root.dark .state-title { color: #E2E8F0; }
-.state-hint { font-size: 0.8125rem; color: #94A3B8; margin: 0; }
+.state-box { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 20px; color: var(--color-text-muted); }
+.state-error { color: var(--color-error); font-size: 0.9rem; }
+.state-title { font-size: 1rem; font-weight: 600; color: var(--color-text); margin: 8px 0 0; }
+.state-hint { font-size: 0.8125rem; color: var(--color-text-light); margin: 0; }
 
 .spinner { width: 28px; height: 28px; border: 3px solid #E2E8F0; border-top-color: #2563EB; border-radius: 50%; animation: spin 0.7s linear infinite; }
-:root.dark .spinner { border-color: rgba(255, 255, 255, 0.1); border-top-color: #60A5FA; }
+.dark .spinner { border-color: rgba(255, 255, 255, 0.1); border-top-color: #60A5FA; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Records */
@@ -163,30 +168,25 @@ onMounted(() => fetchRecords(0))
 .record-main { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .record-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
 .record-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.icon-success { background: #ECFDF5; color: #059669; }
-.icon-error { background: #FEF2F2; color: #DC2626; }
-:root.dark .icon-success { background: rgba(5, 150, 105, 0.12); }
-:root.dark .icon-error { background: rgba(220, 38, 38, 0.12); }
+.icon-success { background: var(--color-success-light); color: var(--color-success); }
+.icon-error { background: var(--color-error-light); color: var(--color-error); }
 .record-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.record-time { font-size: 0.875rem; font-weight: 600; color: #1E293B; }
-:root.dark .record-time { color: #E2E8F0; }
-.record-loc { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #94A3B8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.status-tag { padding: 3px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
-.tag-success { background: #ECFDF5; color: #059669; }
-.tag-error { background: #FEF2F2; color: #DC2626; }
-:root.dark .tag-success { background: rgba(5, 150, 105, 0.12); }
-:root.dark .tag-error { background: rgba(220, 38, 38, 0.12); }
+.record-time { font-size: 0.875rem; font-weight: 600; color: var(--color-text); }
+.record-loc { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--color-text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-tag { padding: 3px 12px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+.tag-success { background: var(--color-success-light); color: var(--color-success); }
+.tag-error { background: var(--color-error-light); color: var(--color-error); }
 
 /* Pagination */
 .pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; }
-.page-btn { padding: 8px 18px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; color: #2563EB; font-size: 0.8125rem; font-weight: 500; transition: all 0.2s; min-height: 40px; font-family: inherit; }
-:root.dark .page-btn { background: rgba(30, 41, 59, 0.5); border-color: rgba(255, 255, 255, 0.08); color: #60A5FA; }
-.page-btn:hover:not(:disabled) { background: #EFF6FF; border-color: #2563EB; }
+.page-btn { padding: 8px 18px; border: 1px solid var(--color-border); border-radius: 8px; background: #F8FAFC; color: var(--color-primary); font-size: 0.8125rem; font-weight: 500; transition: all 0.2s; min-height: 40px; font-family: inherit; cursor: pointer; }
+.dark .page-btn { background: rgba(30, 41, 59, 0.5); border-color: rgba(255, 255, 255, 0.08); color: var(--color-secondary); }
+.page-btn:hover:not(:disabled) { background: var(--color-primary-light); border-color: var(--color-primary); }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.page-info { font-size: 0.875rem; color: #64748B; }
+.page-info { font-size: 0.875rem; color: var(--color-text-muted); }
 
 /* Shared buttons */
-.btn-primary { padding: 10px 24px; background: linear-gradient(135deg, #2563EB, #3B82F6); color: white; border: none; border-radius: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; min-height: 44px; font-family: inherit; transition: all 0.2s; }
+.btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px; background: linear-gradient(135deg, #2563EB, #3B82F6); color: white; border: none; border-radius: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; min-height: 44px; font-family: inherit; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
 .btn-primary:hover { transform: translateY(-1px); }
 .btn-outline { padding: 8px 20px; background: transparent; color: #2563EB; border: 1px solid #2563EB; border-radius: 8px; font-size: 0.8125rem; cursor: pointer; min-height: 40px; font-family: inherit; transition: all 0.2s; }
 .btn-outline:hover { background: rgba(37, 99, 235, 0.08); }

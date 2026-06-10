@@ -22,4 +22,10 @@ public interface ChatHistoryRepository extends BaseRepository<ChatHistoryEntity>
     @Transactional
     @Modifying
     void deleteBySessionId(String sessionId);
+
+    Page<ChatHistoryEntity> findByStudentId(String studentId, Pageable pageable);
+
+    @Transactional
+    @Modifying
+    void deleteByStudentId(String studentId);
 }
