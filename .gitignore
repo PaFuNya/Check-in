@@ -31,3 +31,19 @@ application-local.properties
 # Node.js
 frontend/node_modules/
 frontend/dist/
+
+# Data files (large, not needed in repo)
+data/*.pdf
+data/*.txt
+cookies.txt
+*.md
+!README.md
+!LICENSE
+
+# Build artifacts
+target/
+src/main/resources/static/
+
+# OS
+.DS_Store
+Thumbs.db
