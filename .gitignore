@@ -47,3 +47,35 @@ src/main/resources/static/
 # OS
 .DS_Store
 Thumbs.db
+
+# === 构建产物 / 临时文件 ===
+target/
+BOOT-INF/
+*.jar
+*.war
+
+# === 开发工具 ===
+.claude/
+.github/
+.idea/
+*.iml
+
+# === 参考代码 / 文档 ===
+teacher_reference_src/
+docs/images/
+src/src/
+
+# === 临时 spec / task 文件 ===
+*_SPEC*.md
+*_TASK*.md
+*REVIEW*.md
+*REFACTOR*.md
+*OPTIMIZE*.md
+fix_task.md
+review_task.md
+功能模块分析.md
+数据库设计.md
+用户意图功能分析.md
+architecture.html
+deploy.sh
+start.sh
