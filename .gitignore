@@ -12,18 +12,7 @@ target/
 Thumbs.db
 uploads/
 .claude/
-CLAUDE.md
-TASK*.md
-REVIEW_*.md
-PHASE*_SPEC.md
-UI_REDESIGN_SPEC.md
-UI_SPEC_FINAL.md
-FACE_RECOGNITION_TASK.md
-H5_LIVENESS_TASK.md
-fix_task.md
-review_task.md
-architecture.html
-Dockerfile.local
+.github/
 
 # Local properties with secrets
 application-local.properties
@@ -32,40 +21,27 @@ application-local.properties
 frontend/node_modules/
 frontend/dist/
 
-# Data files (large, not needed in repo)
-data/*.pdf
-data/*.txt
-cookies.txt
-*.md
-!README.md
-!LICENSE
-
 # Build artifacts
-target/
 src/main/resources/static/
 
-# OS
-.DS_Store
-Thumbs.db
-
-# === 构建产物 / 临时文件 ===
-target/
-BOOT-INF/
-*.jar
-*.war
-
-# === 开发工具 ===
-.claude/
-.github/
-.idea/
-*.iml
-
-# === 参考代码 / 文档 ===
+# Reference code
 teacher_reference_src/
-docs/images/
 src/src/
 
-# === 临时 spec / task 文件 ===
+# Deploy packaging
+deploy/
+
+# Diagram source HTML (keep PNG images)
+docs/*.html
+
+# Temp / legacy files
+Dockerfile.local
+cookies.txt
+data/
+BOOT-INF/
+start.sh
+deploy.sh
+nginx.conf
 *_SPEC*.md
 *_TASK*.md
 *REVIEW*.md
@@ -73,9 +49,3 @@ src/src/
 *OPTIMIZE*.md
 fix_task.md
 review_task.md
-功能模块分析.md
-数据库设计.md
-用户意图功能分析.md
-architecture.html
-deploy.sh
-start.sh
